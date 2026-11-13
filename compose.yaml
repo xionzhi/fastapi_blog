@@ -1,0 +1,43 @@
+services:
+  blog:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      BLOG_ENVIRONMENT: production
+      BLOG_URL: ${BLOG_URL:?Set the production HTTPS BLOG_URL}
+      BLOG_SECURE_COOKIES: "true"
+      BLOG_ALLOWED_ORIGINS: ${BLOG_ALLOWED_ORIGINS:?Set exact production HTTPS origins}
+      BLOG_TRUSTED_PROXY_NETWORKS: ${BLOG_TRUSTED_PROXY_NETWORKS:-}
+      BLOG_ANALYTICS_ENABLED: ${BLOG_ANALYTICS_ENABLED:-true}
+      BLOG_ANALYTICS_RETENTION_DAYS: ${BLOG_ANALYTICS_RETENTION_DAYS:-90}
+      BLOG_ANALYTICS_MAX_DAILY_VIEWS: ${BLOG_ANALYTICS_MAX_DAILY_VIEWS:-50000}
+      BLOG_DATA_DIR: /app/data
+      BLOG_SESSION_HOURS: ${BLOG_SESSION_HOURS:-24}
+      BLOG_SMTP_HOST: ${BLOG_SMTP_HOST:-}
+      BLOG_SMTP_PORT: ${BLOG_SMTP_PORT:-587}
+      BLOG_SMTP_SECURITY: ${BLOG_SMTP_SECURITY:-starttls}
+      BLOG_SMTP_USERNAME: ${BLOG_SMTP_USERNAME:-}
+      BLOG_SMTP_PASSWORD: ${BLOG_SMTP_PASSWORD:-}
+      BLOG_MAIL_FROM: ${BLOG_MAIL_FROM:-}
+    volumes:
+      - ./data/production:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 128
+    mem_limit: ${BLOG_MEMORY_LIMIT:-1g}
+    cpus: ${BLOG_CPU_LIMIT:-1.0}
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+        mode: non-blocking
+        max-buffer-size: "1m"

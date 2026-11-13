@@ -1,0 +1,27 @@
+{
+  "name": "xionzhi-blog",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "format": "prettier --write src index.html vite.config.ts tsconfig.json",
+    "format:check": "prettier --check src index.html vite.config.ts tsconfig.json"
+  },
+  "dependencies": {
+    "lucide-vue-next": "^0.468.0",
+    "prismjs": "^1.30.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/prismjs": "^1.26.5",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "prettier": "^3.5.0",
+    "typescript": "~5.7.3",
+    "vite": "^6.4.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

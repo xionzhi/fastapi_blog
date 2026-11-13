@@ -1,0 +1,17 @@
+Bundled fonts are served locally from frontend/public/legacy/fonts/.
+The original font files have not been modified.
+
+Open Sans, legacy Google Fonts v15 Latin subsets:
+  mem8YaGs126MiZpBA-UFVZ0b.woff2 (Regular, 400)
+  mem5YaGs126MiZpBA-UN7rgOUuhp.woff2 (Bold, 700)
+  Source: https://fonts.gstatic.com/s/opensans/v15/
+  License: Apache License 2.0; see Open-Sans-Apache-2.0.txt.
+
+Merriweather, Google Fonts v19 Latin subsets:
+  u-4n0qyriQwlOrhSvowK_l521wRZWMf6.woff2 (Light, 300)
+  u-4n0qyriQwlOrhSvowK_l52xwNZWMf6.woff2 (Bold, 700)
+  u-4l0qyriQwlOrhSvowK_l5-eR7lXff4jvw.woff2 (Light Italic, 300)
+  Source: https://fonts.gstatic.com/s/merriweather/v19/
+  License: SIL Open Font License 1.1; see Merriweather-OFL.txt.
+
+These URLs document provenance only. The application does not request them.

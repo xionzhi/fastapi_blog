@@ -144,6 +144,9 @@ async function importContent(): Promise<void> {
         />
         I have reviewed this preview and want to import this data.
       </label>
+      <p v-if="preview.can_import && !confirmed">
+        Select the confirmation checkbox above before importing.
+      </p>
       <button
         type="button"
         class="button-primary"
@@ -220,15 +223,10 @@ async function importContent(): Promise<void> {
 .transfer-checkbox {
   display: flex;
   flex-direction: row;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 10px;
   margin: 18px 0;
   font-size: 12px;
   line-height: 1.7;
-}
-.transfer-checkbox input {
-  width: auto;
-  margin: 0;
-  flex: 0 0 auto;
 }
 </style>

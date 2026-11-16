@@ -248,7 +248,9 @@ BLOG_SMTP_PASSWORD=your-secret
 BLOG_MAIL_FROM=blog@example.com
 ```
 
-仅支持加密 SMTP：`starttls`（通常 587）或 `ssl`（通常 465）。重启后绑定管理员找回邮箱：
+仅支持加密 SMTP：`starttls`（通常 587）或 `ssl`（通常 465）。修改容器环境变量后，使用 `docker compose up -d --wait` 重建容器。管理员可在 **Settings → Administrator email** 设置或修改找回邮箱，需要验证当前密码；SMTP 尚未配置时也可先保存地址。更换地址会撤销旧的重置链接及其他登录会话，当前会话保留。SMTP 启用且已有旧邮箱时，会向旧邮箱发送变更通知。
+
+也可以在服务器终端绑定管理员找回邮箱：
 
 ```bash
 docker compose exec blog python -m app.cli set-admin-email --username admin --email you@example.com

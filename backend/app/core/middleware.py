@@ -80,7 +80,7 @@ class RequestSizeLimitMiddleware:
         headers = dict(scope.get("headers", []))
         path = scope.get("path", "")
         limit = self.max_bytes
-        if path == "/api/admin/login" or path.startswith("/api/auth/"):
+        if path in {"/api/admin/login", "/api/admin/mail"} or path.startswith("/api/auth/"):
             limit = min(limit, 8192)
         elif path == "/api/analytics/events":
             limit = min(limit, 2048)

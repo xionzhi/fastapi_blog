@@ -78,6 +78,24 @@ def password_changed(config: Settings, recipient: str, username: str) -> None:
         logger.error("Password-change notification failed (%s)", type(exc).__name__)
 
 
+def recovery_email_changed(config: Settings, recipient: str, username: str) -> None:
+    if not config.mail_enabled:
+        return
+    try:
+        title = site_title(config)
+        sender.send_message(
+            config,
+            recipient,
+            f"[{title}] Administrator recovery email changed",
+            f"Hello {username},\n\nYour administrator recovery email has changed. "
+            "Other sessions and existing password reset links have been revoked.\n\n"
+            "If you did not make this change, reset your password from the server console "
+            f"and check your account immediately.\n\nBlog: {config.site_url}",
+        )
+    except Exception as exc:
+        logger.error("Recovery-email notification failed (%s)", type(exc).__name__)
+
+
 def send_reset(config: Settings, recipient: str, username: str, token: str) -> None:
     from app.core.security import digest_token
 

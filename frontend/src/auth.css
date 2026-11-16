@@ -59,6 +59,36 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+.mail-address {
+  display: flex;
+  align-items: center;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+.recovery-email-form {
+  display: grid;
+  gap: 18px;
+  margin: 24px 0;
+  padding: 22px;
+  border: 1px solid #dfe5de;
+  border-radius: 6px;
+  background: #f7f9f5;
+  max-width: 560px;
+}
+.recovery-email-form h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.recovery-email-form .muted {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.mail-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .mail-status .status-badge {
   font-size: 11px;
   line-height: 1.4;

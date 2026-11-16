@@ -1,34 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Mail } from 'lucide-vue-next'
-import { getMailStatus, sendTestEmail } from '../api/mail'
-import { errorMessage } from '../utils/format'
-import { notify } from '../stores/notifications'
-const state = ref<{ enabled: boolean; email: string }>()
-const error = ref('')
-const busy = ref(false)
-getMailStatus()
-  .then((v) => (state.value = v))
-  .catch((e) => (error.value = errorMessage(e)))
-async function testMail() {
-  busy.value = true
-  error.value = ''
-  try {
-    const r = await sendTestEmail()
-    notify(r.message)
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    busy.value = false
-  }
-}
+import { Mail, Pencil, Save } from 'lucide-vue-next'
+import { useAdminMail } from '../composables/useAdminMail'
+
+const {
+  state,
+  error,
+  busy,
+  editing,
+  email,
+  password,
+  emailInput,
+  activity,
+  canSave,
+  edit,
+  cancel,
+  save,
+  testMail,
+  reload,
+} = useAdminMail()
 </script>
 <template>
   <section class="content-panel settings-section mail-section">
     <p class="eyebrow">ACCOUNT SECURITY</p>
     <h2>Administrator email</h2>
     <p class="muted">
-      Password reset links and password change notifications are sent to your recovery address.
+      Password reset links and account security notifications are sent to your administrator email.
     </p>
     <template v-if="state">
       <dl class="mail-status">
@@ -44,29 +40,98 @@ async function testMail() {
           </dd>
         </div>
         <div>
-          <dt>Recovery address</dt>
-          <dd>{{ state.email || 'Not set' }}</dd>
+          <dt>Administrator email</dt>
+          <dd class="mail-address">
+            <span>{{ state.email || 'Not set' }}</span>
+            <button
+              v-if="!editing"
+              type="button"
+              class="button-secondary"
+              :disabled="busy"
+              @click="edit"
+            >
+              <Pencil :size="14" />
+              {{ state.email ? 'Change email' : 'Set email' }}
+            </button>
+          </dd>
         </div>
       </dl>
+      <form
+        v-if="editing"
+        class="recovery-email-form"
+        @submit.prevent="save"
+      >
+        <h3>{{ state.email ? 'Change administrator email' : 'Set administrator email' }}</h3>
+        <p class="muted">
+          Enter your blog login password to confirm this change. Changing your email signs out other
+          sessions and invalidates existing password reset links.
+        </p>
+        <label>
+          Administrator email address
+          <input
+            ref="emailInput"
+            v-model="email"
+            type="email"
+            autocomplete="email"
+            maxlength="254"
+            required
+            :disabled="busy"
+          />
+        </label>
+        <label>
+          Current login password
+          <input
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            maxlength="1024"
+            required
+            :disabled="busy"
+          />
+        </label>
+        <div class="mail-actions">
+          <button
+            type="submit"
+            class="button-primary"
+            :disabled="!canSave"
+          >
+            <Save :size="16" />
+            {{ activity === 'save' ? 'Saving…' : 'Save email' }}
+          </button>
+          <button
+            type="button"
+            class="button-secondary"
+            :disabled="busy"
+            @click="cancel"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
       <p
         v-if="!state.enabled"
         class="muted"
       >
-        Email recovery will be available after the mail service is configured during deployment.
+        Email delivery is not configured. You can still save your administrator email.
       </p>
       <p
-        v-if="!state.email"
+        v-else
         class="muted"
       >
-        Ask the server administrator to bind your recovery email.
+        {{
+          state.email
+            ? 'Send a test email to check delivery to this address.'
+            : 'Set your administrator email to enable password recovery.'
+        }}
       </p>
       <button
+        type="button"
         class="button-secondary"
-        :disabled="!state.enabled || !state.email || busy"
+        :disabled="!state.enabled || !state.email || busy || editing"
         @click="testMail"
       >
         <Mail :size="16" />
-        {{ busy ? 'Sending…' : 'Send test email' }}
+        {{ activity === 'test' ? 'Sending…' : 'Send test email' }}
       </button>
     </template>
     <p
@@ -75,6 +140,15 @@ async function testMail() {
     >
       Loading email status…
     </p>
+    <button
+      v-if="!state && error"
+      type="button"
+      class="button-secondary"
+      :disabled="busy"
+      @click="reload"
+    >
+      Reload email status
+    </button>
     <p
       v-if="error"
       class="form-error"

@@ -153,6 +153,14 @@ BLOG_ALLOWED_ORIGINS=https://xionzhi.com
 
 SMTP 可留空，登录、写作和站内统计不依赖邮件。先验证配置并手动构建；在服务对公网开放前设置生产密码。`--reset-password` 对已有账号重设密码并撤销会话，也可以创建尚不存在的账号：
 
+如果构建时 PyPI 下载较慢，可以在服务器 `.env` 中设置清华镜像，仅影响 Docker 构建期间的 pip 安装：
+
+```dotenv
+PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+地址使用 HTTPS，并保留 `/simple`，参见[清华镜像说明](https://mirrors.tuna.tsinghua.edu.cn/help/pypi/)。不设置时使用官方 PyPI，也可以仅为一次构建传参：`docker compose build --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple blog`。修改宿主机的 pip 配置不会自动改变镜像构建中的 pip 配置。
+
 ```bash
 docker compose config --quiet
 docker compose build --pull

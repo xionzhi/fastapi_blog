@@ -1,6 +1,9 @@
 services:
   blog:
-    build: .
+    build:
+      context: .
+      args:
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"

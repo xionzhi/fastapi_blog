@@ -9,7 +9,8 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BLOG_DATA_DIR=/app/data PYTHONPATH=/app/backend
 WORKDIR /app
 COPY backend/requirements.lock.txt ./backend/requirements.lock.txt
-RUN pip install --no-cache-dir -r backend/requirements.lock.txt \
+ARG PIP_INDEX_URL=https://pypi.org/simple
+RUN pip install --no-cache-dir --index-url "$PIP_INDEX_URL" -r backend/requirements.lock.txt \
     && groupadd --gid 10001 blog \
     && useradd --uid 10001 --gid blog --create-home blog
 COPY --chown=blog:blog backend/app/ ./backend/app/

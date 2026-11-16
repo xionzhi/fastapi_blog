@@ -65,6 +65,7 @@ RESERVED = {
     "admin",
     "workspace",
     "assets",
+    "legacy",
     "content",
     "tag",
     "tags",

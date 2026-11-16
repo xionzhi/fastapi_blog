@@ -96,6 +96,8 @@ npm run format:check
 
 Vite 启动后，访问 `http://127.0.0.1:5173/tests/interactions.html` 可执行异步请求和弹窗交互检查。检查使用模拟请求，不写入博客数据，不进入生产构建。
 
+`http://127.0.0.1:5173/tests/review-fixes.html` 补充检查编辑器保存与路由竞态、失败加载后的禁写、文章首屏数据复用、页面元数据和弹窗键盘焦点。该页面同样使用模拟请求，不写入博客数据。
+
 ## Linux Docker 部署
 
 一台 Linux 主机即可运行整个项目：宿主机安装 [Docker Engine 与 Compose 插件](https://docs.docker.com/engine/install/)、Nginx 和 logrotate，Nginx 使用现有的 HTTPS 证书。域名的 A/AAAA 记录需要指向该主机；只有提供 IPv6 服务时才保留 AAAA。公网仅开放 80/443，SSH 限制为管理来源，应用 8000 端口只绑定本机。

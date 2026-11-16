@@ -5,6 +5,8 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Link, List } from 'lucide-vue-next'
 import { useAsyncResource } from '../composables/useAsyncResource'
+import { usePageMetadata } from '../composables/usePageMetadata'
+import { takeInitialPost } from '../stores/initial'
 import { notify } from '../stores/notifications'
 import { site } from '../stores/site'
 import type { PostDetail as Post } from '../types'
@@ -31,19 +33,39 @@ const {
     }
     return data
   },
+  takeInitialPost(route.path),
 )
-watch(post, (data) => {
-  showToc.value = false
-  toc.value = []
-  if (!data) return
-  document.title = `${data.title} · ${site.value.title}`
-  const doc = new DOMParser().parseFromString(data.html, 'text/html')
-  toc.value = [...doc.querySelectorAll('h1,h2,h3')].map((h) => ({
-    id: h.id,
-    text: h.textContent || '',
-    level: Number(h.tagName[1]),
-  }))
+usePageMetadata(() => {
+  const data = post.value
+  if (!data || data.slug !== route.params.slug) return {}
+  return {
+    title: `${data.title} · ${site.value.title}`,
+    description:
+      data.excerpt ||
+      new DOMParser()
+        .parseFromString(data.html, 'text/html')
+        .body.textContent?.trim()
+        .slice(0, 180) ||
+      '',
+    image: data.feature_image,
+    type: 'article',
+  }
 })
+watch(
+  post,
+  (data) => {
+    showToc.value = false
+    toc.value = []
+    if (!data) return
+    const doc = new DOMParser().parseFromString(data.html, 'text/html')
+    toc.value = [...doc.querySelectorAll('h1,h2,h3')].map((h) => ({
+      id: h.id,
+      text: h.textContent || '',
+      level: Number(h.tagName[1]),
+    }))
+  },
+  { immediate: true },
+)
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(window.location.href)

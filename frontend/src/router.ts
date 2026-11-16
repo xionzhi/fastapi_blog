@@ -3,6 +3,7 @@ import { checkSession } from './stores/session'
 import { site } from './stores/site'
 import { notify } from './stores/notifications'
 import { errorMessage } from './utils/format'
+import { updatePageMetadata } from './utils/metadata'
 
 const COLLECTION_PATH = /^\/(?:page\/\d+\/?|(?:tag|author)\/[^/]+(?:\/page\/\d+)?\/?)?$/
 
@@ -112,7 +113,9 @@ router.beforeEach(async (to) => {
 router.onError(() => {
   notify('This page could not be loaded. Please check your connection and reload.')
 })
-router.afterEach((to) => {
+router.afterEach((to, _from, failure) => {
+  if (failure) return
+  updatePageMetadata(to.path, site.value)
   if (to.path.startsWith('/workspace')) {
     const title = to.path.includes('/analytics')
       ? 'Analytics'
@@ -129,6 +132,6 @@ router.afterEach((to) => {
                 : to.params.id || to.path.endsWith('/new')
                   ? 'Edit post'
                   : 'Posts'
-    document.title = `${title} · ${site.value.title}`
+    updatePageMetadata(to.path, site.value, { title: `${title} · ${site.value.title}` })
   }
 })

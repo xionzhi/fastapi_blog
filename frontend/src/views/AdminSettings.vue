@@ -4,7 +4,7 @@ import { updateSite } from '../api/site'
 import { ref } from 'vue'
 import { Plus, Trash2, Save } from 'lucide-vue-next'
 import { errorMessage } from '../utils/format'
-import { loadSite, site } from '../stores/site'
+import { site } from '../stores/site'
 import { notify } from '../stores/notifications'
 import type { Site } from '../types'
 import AdminMail from '../components/AdminMail.vue'
@@ -14,11 +14,11 @@ const form = ref<Site>(cloneSite())
 const busy = ref(false)
 const error = ref('')
 async function save() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {
-    await updateSite(form.value)
-    await loadSite()
+    site.value = await updateSite(form.value)
     notify('Site settings saved')
   } catch (e) {
     error.value = errorMessage(e)

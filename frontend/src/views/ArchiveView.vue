@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import BlogNav from '../components/BlogNav.vue'
 import { date, errorMessage } from '../utils/format'
 import { site } from '../stores/site'
+import { usePageMetadata } from '../composables/usePageMetadata'
 import type { PostSummary as Post } from '../types'
 const posts = ref<Post[]>([])
 const page = ref(0)
@@ -40,7 +41,7 @@ async function load() {
   }
 }
 load()
-document.title = `Archive · ${site.value.title}`
+usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
 </script>
 <template>
   <BlogNav />

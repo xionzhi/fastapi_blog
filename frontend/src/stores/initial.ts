@@ -1,9 +1,10 @@
-import type { Page, PostSummary, Site } from '../types'
+import type { Page, PostDetail, PostSummary, Site } from '../types'
 
 interface InitialDocument {
   site?: Site
   path?: string
   posts?: Page<PostSummary>
+  post?: PostDetail
 }
 
 function readDocument(): InitialDocument {
@@ -19,15 +20,26 @@ function readDocument(): InitialDocument {
 
 export const initialDocument = readDocument()
 
-export function takeInitialPosts(path: string): Page<PostSummary> | undefined {
+function matchesPath(path: string): boolean {
   const source = initialDocument.path
-  if (source === undefined) return
+  if (source === undefined) return false
   try {
-    if (decodeURI(path).replace(/\/+$/, '') !== decodeURI(source).replace(/\/+$/, '')) return
+    return decodeURI(path).replace(/\/+$/, '') === decodeURI(source).replace(/\/+$/, '')
   } catch {
-    return
+    return false
   }
+}
+
+export function takeInitialPosts(path: string): Page<PostSummary> | undefined {
+  if (!matchesPath(path)) return
   const posts = initialDocument.posts
   initialDocument.posts = undefined
   return posts
+}
+
+export function takeInitialPost(path: string): PostDetail | undefined {
+  if (!matchesPath(path)) return
+  const post = initialDocument.post
+  initialDocument.post = undefined
+  return post
 }

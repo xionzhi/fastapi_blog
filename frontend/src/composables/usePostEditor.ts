@@ -47,6 +47,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   const mode = ref<EditorMode>('write')
   const html = ref('')
   const loading = ref(true)
+  const ready = ref(false)
   const busy = ref(false)
   const uploading = ref(false)
   const error = ref('')
@@ -61,12 +62,20 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
 
   async function load(): Promise<void> {
     const sequence = ++loadSequence
+    const requestedId = String(route.params.id || '')
     loading.value = true
+    ready.value = false
+    id.value = ''
+    baseline.value = ''
+    model.value = emptyDraft()
+    tagText.value = ''
+    html.value = ''
+    mode.value = 'write'
     error.value = ''
     try {
       const [availableTags, post] = await Promise.all([
         getAdminTags(),
-        route.params.id ? getAdminPost(String(route.params.id)) : Promise.resolve(undefined),
+        requestedId ? getAdminPost(requestedId) : Promise.resolve(undefined),
       ])
       if (sequence !== loadSequence) return
       tags.value = availableTags
@@ -90,6 +99,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
         : emptyDraft()
       tagText.value = post?.tags.map((tag) => tag.name).join(', ') ?? ''
       baseline.value = snapshot()
+      ready.value = true
     } catch (cause) {
       if (sequence === loadSequence) error.value = errorMessage(cause)
     } finally {
@@ -134,7 +144,9 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   })
 
   async function save(status: PostInput['status'] = model.value.status): Promise<void> {
-    if (busy.value) return
+    if (busy.value || uploading.value || loading.value || !ready.value) return
+    if (String(route.params.id || '') !== id.value) return
+    const sequence = loadSequence
     busy.value = true
     error.value = ''
     try {
@@ -153,6 +165,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
           .filter(Boolean),
       }
       const post = await savePost(payload, id.value || undefined)
+      if (sequence !== loadSequence) return
       id.value = post.id
       automaticSlug.value = false
       model.value = {
@@ -181,7 +194,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
       )
       if (!route.params.id) await router.replace(`/workspace/posts/${post.id}`)
     } catch (cause) {
-      error.value = errorMessage(cause)
+      if (sequence === loadSequence) error.value = errorMessage(cause)
     } finally {
       busy.value = false
     }
@@ -190,11 +203,13 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   async function upload(event: Event, cover: boolean): Promise<void> {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
-    if (!file) return
+    if (!file || busy.value || uploading.value || loading.value || !ready.value) return
+    const sequence = loadSequence
     uploading.value = true
     error.value = ''
     try {
       const { url } = await uploadImage(file)
+      if (sequence !== loadSequence) return
       if (cover) model.value.feature_image = url
       else {
         const insertion =
@@ -207,7 +222,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
           model.value.body.slice(0, start) + insertion + model.value.body.slice(end)
       }
     } catch (cause) {
-      error.value = errorMessage(cause)
+      if (sequence === loadSequence) error.value = errorMessage(cause)
     } finally {
       uploading.value = false
       input.value = ''
@@ -215,14 +230,18 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   }
 
   function beforeUnload(event: BeforeUnloadEvent): void {
-    if (!dirty.value) return
+    if (!dirty.value && !busy.value && !uploading.value) return
     event.preventDefault()
     event.returnValue = ''
   }
-  const canLeave = (to: RouteLocationNormalized): boolean =>
-    Boolean(id.value && to.params.id === id.value) ||
-    !dirty.value ||
-    confirm('You have unsaved changes. Leave this page?')
+  const canLeave = (to: RouteLocationNormalized): boolean => {
+    if (id.value && to.params.id === id.value) return true
+    if (busy.value || uploading.value) {
+      notify('Wait for the save or upload to finish before leaving this page.')
+      return false
+    }
+    return !dirty.value || confirm('You have unsaved changes. Leave this page?')
+  }
   onBeforeRouteLeave(canLeave)
   onBeforeRouteUpdate(canLeave)
   onMounted(() => window.addEventListener('beforeunload', beforeUnload))
@@ -239,6 +258,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     mode,
     html,
     loading,
+    ready,
     busy,
     uploading,
     error,
@@ -248,5 +268,6 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     automaticSlug,
     save,
     upload,
+    load,
   }
 }

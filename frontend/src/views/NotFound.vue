@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import BlogNav from '../components/BlogNav.vue'
+import { usePageMetadata } from '../composables/usePageMetadata'
+usePageMetadata(() => ({ title: 'Page not found' }))
 </script>
 <template>
   <BlogNav />

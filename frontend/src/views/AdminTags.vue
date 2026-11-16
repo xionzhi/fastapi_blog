@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
 import { errorMessage, slugify } from '../utils/format'
 import { notify } from '../stores/notifications'
 import { useScrollLock } from '../composables/useScrollLock'
+import { useModalFocus } from '../composables/useModalFocus'
 import type { Tag } from '../types'
 const tags = ref<Tag[]>([])
 const editing = ref(false)
@@ -15,6 +16,11 @@ const form = ref({ name: '', slug: '', description: '' })
 const busy = ref(false)
 const error = ref('')
 const loading = ref(true)
+const dialog = ref<HTMLElement>()
+function close(): void {
+  if (!busy.value) editing.value = false
+}
+const { keyboard } = useModalFocus(editing, dialog, close)
 async function load() {
   loading.value = true
   try {
@@ -32,6 +38,7 @@ function edit(tag?: Tag) {
   error.value = ''
 }
 async function save() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {
@@ -126,68 +133,74 @@ load()
         No tags yet. You can also create them while writing.
       </p>
     </div>
-    <div
-      v-if="editing"
-      class="admin-modal-backdrop"
-      @click.self="editing = false"
-    >
-      <section
-        class="admin-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Edit tag"
+    <Teleport to="body">
+      <div
+        v-if="editing"
+        class="admin-modal-backdrop"
+        @click.self="close"
+        @keydown="keyboard"
       >
-        <header>
-          <h2>{{ id ? 'Edit tag' : 'New tag' }}</h2>
-          <button
-            class="icon-button"
-            aria-label="Close"
-            @click="editing = false"
-          >
-            <X :size="20" />
-          </button>
-        </header>
-        <form @submit.prevent="save">
-          <label>
-            Name
-            <input
-              v-model="form.name"
-              @input="!id && (form.slug = slugify(form.name))"
-              required
-              maxlength="80"
-            />
-          </label>
-          <label>
-            URL
-            <input
-              v-model="form.slug"
-              required
-              maxlength="200"
-            />
-          </label>
-          <label>
-            Description
-            <textarea
-              v-model="form.description"
-              rows="3"
-              maxlength="1000"
-            />
-          </label>
-          <p
-            v-if="error"
-            class="form-error"
-            role="alert"
-          >
-            {{ error }}
-          </p>
-          <button
-            class="button-primary"
-            :disabled="busy"
-          >
-            {{ busy ? 'Saving…' : 'Save tag' }}
-          </button>
-        </form>
-      </section>
-    </div>
+        <section
+          ref="dialog"
+          class="admin-modal"
+          tabindex="-1"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit tag"
+        >
+          <header>
+            <h2>{{ id ? 'Edit tag' : 'New tag' }}</h2>
+            <button
+              class="icon-button"
+              aria-label="Close"
+              :disabled="busy"
+              @click="close"
+            >
+              <X :size="20" />
+            </button>
+          </header>
+          <form @submit.prevent="save">
+            <label>
+              Name
+              <input
+                v-model="form.name"
+                @input="!id && (form.slug = slugify(form.name))"
+                required
+                maxlength="80"
+              />
+            </label>
+            <label>
+              URL
+              <input
+                v-model="form.slug"
+                required
+                maxlength="200"
+              />
+            </label>
+            <label>
+              Description
+              <textarea
+                v-model="form.description"
+                rows="3"
+                maxlength="1000"
+              />
+            </label>
+            <p
+              v-if="error"
+              class="form-error"
+              role="alert"
+            >
+              {{ error }}
+            </p>
+            <button
+              class="button-primary"
+              :disabled="busy"
+            >
+              {{ busy ? 'Saving…' : 'Save tag' }}
+            </button>
+          </form>
+        </section>
+      </div>
+    </Teleport>
   </div>
 </template>

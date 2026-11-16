@@ -115,13 +115,18 @@ def list_posts(
     statement = statement.order_by(
         func.coalesce(PostOrm.published_at, PostOrm.created_at).desc(), PostOrm.id.desc()
     )
-    records = db_session.scalars(statement.limit(limit).offset((page - 1) * limit)).all()
+    pages = max(1, math.ceil(total / limit))
+    records = (
+        db_session.scalars(statement.limit(limit).offset((page - 1) * limit)).all()
+        if page <= pages
+        else []
+    )
     return {
         "items": [serialize(row, admin=admin) for row in records],
         "total": total,
         "page": page,
         "limit": limit,
-        "pages": max(1, math.ceil(total / limit)),
+        "pages": pages,
     }
 
 

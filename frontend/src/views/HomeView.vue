@@ -2,10 +2,11 @@
 import { getPosts } from '../api/posts'
 import { getPublicTags } from '../api/tags'
 
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChevronDown, Search } from 'lucide-vue-next'
 import { useAsyncResource } from '../composables/useAsyncResource'
+import { usePageMetadata } from '../composables/usePageMetadata'
 import { site } from '../stores/site'
 import { takeInitialPosts } from '../stores/initial'
 import type { Page, PostSummary as Post, Tag } from '../types'
@@ -40,13 +41,9 @@ const {
     ),
   initialPosts,
 )
-watch(
-  title,
-  () => {
-    document.title = `${route.params.tag || route.params.author ? `${title.value} · ` : ''}${site.value.title}`
-  },
-  { immediate: true },
-)
+usePageMetadata(() => ({
+  title: `${route.params.tag || route.params.author ? `${title.value} · ` : ''}${site.value.title}`,
+}))
 getPublicTags()
   .then((v) => (tags.value = v))
   .catch(() => {})

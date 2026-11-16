@@ -28,7 +28,7 @@ admin_router = APIRouter(
 @router.get("/posts", response_model=Page[PostSummary])
 def list_public_posts(
     db_session: DbSession,
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=1_000_000_000),
     limit: int = Query(default=5, ge=1, le=100),
     q: str = Query(default="", max_length=200),
     tag: str = "",
@@ -51,7 +51,7 @@ def get_post_statistics(db_session: DbSession) -> PostStatistics:
 @admin_router.get("/posts", response_model=Page[AdminPostSummary])
 def list_admin_posts(
     db_session: DbSession,
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=1_000_000_000),
     limit: int = Query(default=20, ge=1, le=100),
     q: str = Query(default="", max_length=200),
     status_filter: str = Query(default="", alias="status", pattern="^(draft|published)?$"),

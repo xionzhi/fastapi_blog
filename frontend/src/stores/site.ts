@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getSite } from '../api/site'
+import { getAdminSite, getSite } from '../api/site'
 import type { Site } from '../types'
 import { initialDocument } from './initial'
 
@@ -17,6 +17,6 @@ export const site = ref<Site>(
   },
 )
 
-export async function loadSite(): Promise<void> {
-  site.value = await getSite()
+export async function loadSite(admin = false): Promise<void> {
+  site.value = await (admin ? getAdminSite() : getSite())
 }

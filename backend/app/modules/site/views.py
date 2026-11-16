@@ -23,3 +23,13 @@ def get_site(db_session: DbSession) -> SiteRead:
 )
 def update_site(data: SiteInput, db_session: DbSession) -> SiteRead:
     return service.update(db_session=db_session, data=data)
+
+
+@router.get(
+    "/admin/site",
+    response_model=SiteRead,
+    response_model_exclude_none=True,
+    dependencies=[Depends(get_current_user)],
+)
+def get_admin_site(db_session: DbSession) -> SiteRead:
+    return service.get(db_session=db_session)

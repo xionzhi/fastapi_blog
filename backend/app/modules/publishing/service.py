@@ -15,8 +15,8 @@ from app.common.database import connect, read_settings
 from app.common.models import Page
 from app.core.config import Settings
 from app.core.paths import is_workspace_path
-from app.modules.post.models import PostOrm, PostRedirectOrm, PostSummary
-from app.modules.post.service import list_posts, public_predicate
+from app.modules.post.models import PostOrm, PostRead, PostRedirectOrm, PostSummary
+from app.modules.post.service import get_public, list_posts, public_predicate
 from app.modules.publishing.models import InitialDocument
 from app.modules.publishing.rendering import home_content
 
@@ -110,6 +110,9 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
                     return RedirectResponse("/" + quote(alias) + "/", status_code=301)
                 status, title, content = 404, "Page not found", "<h1>Page not found</h1>"
             else:
+                detail = get_public(db_session=session, slug=path)
+                if isinstance(detail, PostRead):
+                    initial.post = detail
                 title = post.title + " · " + info["title"]
                 description = post.excerpt or post.plain_text[:180]
                 image = post.feature_image or image

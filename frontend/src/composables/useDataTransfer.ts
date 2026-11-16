@@ -99,7 +99,7 @@ export function useDataTransfer() {
       content = ''
       if (includeSettings.value) {
         try {
-          await loadSite()
+          await loadSite(true)
         } catch {
           notify('Import completed. Reload to refresh site settings.')
         }

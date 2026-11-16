@@ -5,13 +5,14 @@ import { ref } from 'vue'
 import BlogNav from '../components/BlogNav.vue'
 import { errorMessage } from '../utils/format'
 import { site } from '../stores/site'
+import { usePageMetadata } from '../composables/usePageMetadata'
 import type { Tag } from '../types'
 const tags = ref<Tag[]>([])
 const error = ref('')
 getPublicTags()
   .then((v) => (tags.value = v))
   .catch((e) => (error.value = errorMessage(e)))
-document.title = `Tags · ${site.value.title}`
+usePageMetadata(() => ({ title: `Tags · ${site.value.title}` }))
 </script>
 <template>
   <BlogNav />

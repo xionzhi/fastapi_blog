@@ -16,6 +16,7 @@ const {
   mode,
   html,
   loading,
+  ready,
   busy,
   uploading,
   error,
@@ -25,6 +26,7 @@ const {
   automaticSlug,
   save,
   upload,
+  load,
 } = usePostEditor(textarea)
 </script>
 <template>
@@ -56,14 +58,14 @@ const {
         </a>
         <button
           class="button-secondary"
-          :disabled="busy || uploading || loading"
+          :disabled="busy || uploading || loading || !ready"
           @click="save('draft')"
         >
           {{ model.status === 'published' ? 'Unpublish' : 'Save draft' }}
         </button>
         <button
           class="button-primary"
-          :disabled="busy || uploading || loading || !model.title.trim()"
+          :disabled="busy || uploading || loading || !ready || !model.title.trim()"
           @click="save('published')"
         >
           <Send :size="15" />
@@ -84,6 +86,13 @@ const {
     >
       Loading editor…
     </p>
+    <button
+      v-else-if="!ready"
+      class="button-secondary"
+      @click="load"
+    >
+      Try again
+    </button>
     <div
       v-else
       class="editor-grid"

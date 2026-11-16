@@ -1,0 +1,266 @@
+"""Native transfers preserve content, never copy credentials, and validate before writing."""
+
+import hashlib
+import json
+import uuid
+
+import pytest
+from sqlalchemy import select
+
+from app.common.database import connect
+from app.modules.auth.models import UserOrm
+from app.modules.transfer import service
+
+
+def native_data():
+    post_id, tag_id = uuid.uuid4().hex, uuid.uuid4().hex
+    timestamp = "2020-01-02T03:04:05Z"
+    return {
+        "format": "xionzhi-blog",
+        "version": 1,
+        "exported_at": timestamp,
+        "media_root": "data/dev/images",
+        "posts": [
+            {
+                "id": post_id,
+                "title": "Original article 中文",
+                "slug": "native-article",
+                "body": "# Heading\n\nOriginal text\n\n```html\n<script>example</script>\n```",
+                "format": "markdown",
+                "status": "published",
+                "type": "post",
+                "excerpt": "",
+                "feature_image": "",
+                "author": "Writer",
+                "author_slug": "writer",
+                "created_at": timestamp,
+                "updated_at": timestamp,
+                "published_at": timestamp,
+                "version": 4,
+                "tags": [tag_id],
+            }
+        ],
+        "tags": [{"id": tag_id, "name": "API", "slug": "api", "description": "Custom tag"}],
+        "redirects": [{"slug": "old-native-url", "post_id": post_id}],
+        "site": {
+            "title": "无情老小儿",
+            "description": "Transferred description",
+            "posts_per_page": 7,
+            "navigation": [{"label": "Home", "url": "/"}],
+        },
+        "files": [],
+    }
+
+
+def encoded(data):
+    return json.dumps(data, ensure_ascii=False).encode("utf-8")
+
+
+def preview(client, data):
+    return client.post(
+        "/api/admin/data/preview",
+        content=encoded(data),
+        headers={"Content-Type": "application/json"},
+    )
+
+
+def apply(client, data, **options):
+    content = encoded(data)
+    params = {"sha256": hashlib.sha256(content).hexdigest(), **options}
+    return client.post(
+        "/api/admin/data/import",
+        content=content,
+        params=params,
+        headers={"Content-Type": "application/json"},
+    )
+
+
+def test_import_roundtrip_preserves_source_metadata_and_destination_accounts(admin, monkeypatch):
+    monkeypatch.setattr(service, "PROJECT_ROOT", admin.app.state.settings.data_dir.parent)
+    data = native_data()
+    before_site = admin.get("/api/site").json()
+    with connect(admin.app.state.settings) as session:
+        before_accounts = [
+            (u.username, u.password_hash, u.email) for u in session.scalars(select(UserOrm))
+        ]
+    checked = preview(admin, data)
+    assert checked.status_code == 200
+    assert checked.json()["new_posts"] == 1 and checked.json()["new_tags"] == 1
+    assert apply(admin, data).status_code == 200
+    result = admin.get("/api/admin/posts/" + data["posts"][0]["id"]).json()
+    assert result["body"] == data["posts"][0]["body"]
+    assert result["version"] == 4 and result["created_at"].startswith("2020-01-02")
+    assert result["tags"][0]["slug"] == "api"
+    assert admin.get("/api/posts/old-native-url").json()["redirect"] == "native-article"
+    assert admin.get("/api/site").json()["description"] == before_site["description"]
+    again = apply(admin, data, include_settings=True)
+    assert again.status_code == 200 and again.json()["imported_posts"] == 0
+    assert again.json()["skipped_posts"] == 1
+    assert admin.get("/api/site").json()["description"] == "Transferred description"
+    export = admin.get("/api/admin/data/export")
+    assert export.status_code == 200
+    assert "attachment" in export.headers["content-disposition"]
+    payload = export.json()
+    assert payload["posts"][0]["body"] == data["posts"][0]["body"]
+    assert "users" not in payload and "password_hash" not in export.text
+    assert payload["media_root"] == "data/images"
+    with connect(admin.app.state.settings) as session:
+        assert [
+            (u.username, u.password_hash, u.email) for u in session.scalars(select(UserOrm))
+        ] == before_accounts
+
+
+def test_conflict_blocks_all_imported_content(admin):
+    data = native_data()
+    assert apply(admin, data).status_code == 200
+    changed = native_data()
+    checked = preview(admin, changed).json()
+    assert not checked["can_import"] and checked["conflicts"]
+    changed["posts"].append(
+        {**changed["posts"][0], "id": uuid.uuid4().hex, "slug": "must-not-be-added"}
+    )
+    assert apply(admin, changed).status_code == 409
+    assert admin.get("/api/admin/posts").json()["total"] == 1
+    assert admin.get("/api/posts/must-not-be-added").status_code == 404
+
+
+def test_different_tag_ids_with_identical_slug_reuse_target_tag(admin):
+    data = native_data()
+    assert apply(admin, data).status_code == 200
+    newer = native_data()
+    newer["posts"][0]["slug"] = "second-native"
+    newer["redirects"] = []
+    checked = preview(admin, newer).json()
+    assert checked["new_tags"] == 0 and checked["can_import"]
+    assert apply(admin, newer).status_code == 200
+    assert len(admin.get("/api/admin/tags").json()) == 1
+    assert admin.get("/api/admin/posts").json()["total"] == 2
+
+
+def test_relative_files_are_resolved_in_target_storage_and_checked(admin):
+    data = native_data()
+    content = b"image fixture"
+    data["files"] = [
+        {
+            "path": "data/dev/images/file/cover.webp",
+            "size": len(content),
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+    ]
+    checked = preview(admin, data).json()
+    assert checked["missing_files"] == [data["files"][0]["path"]]
+    assert apply(admin, data).status_code == 409
+    target = admin.app.state.settings.images / "file" / "cover.webp"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"different image")
+    checked = preview(admin, data).json()
+    assert checked["changed_files"] and not checked["can_import"]
+    assert apply(admin, data, allow_missing_files=True).status_code == 409
+    target.write_bytes(content)
+    assert preview(admin, data).json()["missing_files"] == []
+    assert apply(admin, data).status_code == 200
+    assert target.read_bytes() == content
+
+
+def test_missing_files_require_explicit_acknowledgement(admin):
+    data = native_data()
+    data["files"] = [{"path": "data/dev/images/missing.png", "size": 10, "sha256": "0" * 64}]
+    assert apply(admin, data).status_code == 409
+    assert apply(admin, data, allow_missing_files=True).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../secret",
+        "/etc/passwd",
+        "C:/secret",
+        "data/dev/images/../secret.png",
+        "data/dev/images\\secret.png",
+        "data/dev/images//file.png",
+    ],
+)
+def test_unsafe_paths_are_rejected_without_mutations(admin, path):
+    data = native_data()
+    data["files"] = [{"path": path, "size": 0, "sha256": "0" * 64}]
+    assert preview(admin, data).status_code == 422
+    assert admin.get("/api/admin/posts").json()["total"] == 0
+
+
+def test_invalid_references_duplicates_and_versions_are_rejected(admin):
+    for mutation in ("version", "duplicate", "unknown-tag", "unknown-post", "missing-format"):
+        data = native_data()
+        if mutation == "version":
+            data["version"] = 99
+        elif mutation == "duplicate":
+            data["posts"].append(data["posts"][0])
+        elif mutation == "unknown-tag":
+            data["posts"][0]["tags"] = [uuid.uuid4().hex]
+        elif mutation == "unknown-post":
+            data["redirects"][0]["post_id"] = uuid.uuid4().hex
+        else:
+            del data["format"]
+        assert preview(admin, data).status_code == 422
+
+
+def test_transfer_requires_authentication_csrf_and_matching_preview(client, admin):
+    data = native_data()
+    content = encoded(data)
+    assert (
+        client.post(
+            "/api/admin/logout", headers={"X-CSRF-Token": admin.headers["X-CSRF-Token"]}
+        ).status_code
+        == 200
+    )
+    assert client.get("/api/admin/data/export").status_code == 401
+    assert preview(client, data).status_code == 401
+    login = client.post(
+        "/api/admin/login", json={"username": "writer", "password": "a-safe-test-password"}
+    ).json()
+    client.headers.pop("X-CSRF-Token", None)
+    assert preview(client, data).status_code == 403
+    client.headers["X-CSRF-Token"] = login["csrf_token"]
+    response = client.post(
+        "/api/admin/data/import?sha256=" + "0" * 64,
+        content=content,
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 409
+    assert client.get("/api/admin/posts").json()["total"] == 0
+
+
+def test_import_rerenders_html_instead_of_trusting_executable_markup(admin):
+    data = native_data()
+    data["posts"][0]["format"] = "html"
+    data["posts"][0]["body"] = "<h1>Safe</h1><script>alert(1)</script><img src=x onerror=alert(1)>"
+    assert apply(admin, data).status_code == 200
+    rendered = admin.get("/api/posts/native-article").json()["html"]
+    assert "<script" not in rendered and "onerror" not in rendered
+
+
+def test_export_contains_relative_paths_and_integrity_metadata(admin, monkeypatch):
+    settings = admin.app.state.settings
+    monkeypatch.setattr(service, "PROJECT_ROOT", settings.data_dir.parent)
+    image = settings.images / "example.png"
+    image.write_bytes(b"content")
+    data = admin.get("/api/admin/data/export").json()
+    assert data["files"] == [
+        {
+            "path": "data/images/example.png",
+            "size": 7,
+            "sha256": hashlib.sha256(b"content").hexdigest(),
+        }
+    ]
+
+
+def test_import_is_atomic_when_rendering_fails(admin, monkeypatch):
+    data = native_data()
+
+    def failure(*args, **kwargs):
+        raise RuntimeError("simulated renderer failure")
+
+    monkeypatch.setattr(service, "render", failure)
+    with pytest.raises(RuntimeError):
+        apply(admin, data)
+    assert admin.get("/api/admin/posts").json()["total"] == 0
+    assert admin.get("/api/admin/tags").json() == []

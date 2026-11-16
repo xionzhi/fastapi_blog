@@ -8,6 +8,7 @@ import { loadSite, site } from '../stores/site'
 import { notify } from '../stores/notifications'
 import type { Site } from '../types'
 import AdminMail from '../components/AdminMail.vue'
+import AdminDataTransfer from '../components/AdminDataTransfer.vue'
 const cloneSite = () => JSON.parse(JSON.stringify(site.value)) as Site
 const form = ref<Site>(cloneSite())
 const busy = ref(false)
@@ -24,6 +25,9 @@ async function save() {
   } finally {
     busy.value = false
   }
+}
+function refreshForm(settingsImported: boolean): void {
+  if (settingsImported) form.value = cloneSite()
 }
 </script>
 <template>
@@ -155,5 +159,6 @@ async function save() {
       </button>
     </form>
     <AdminMail />
+    <AdminDataTransfer @imported="refreshForm" />
   </div>
 </template>

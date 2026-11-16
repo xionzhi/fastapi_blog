@@ -11,7 +11,10 @@ class TagInput(BaseModel):
     slug: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=1000)
 
-    _slug = field_validator("slug")(validate_slug)
+    @field_validator("slug")
+    @classmethod
+    def valid_slug(cls, value: str) -> str:
+        return validate_slug(value, allow_reserved=True)
 
 
 class TagRead(BaseModel):

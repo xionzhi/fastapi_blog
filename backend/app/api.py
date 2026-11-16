@@ -12,6 +12,7 @@ from app.modules.post.views import router as post_router
 from app.modules.site.views import router as site_router
 from app.modules.tag.views import admin_router as admin_tag_router
 from app.modules.tag.views import router as tag_router
+from app.modules.transfer.views import router as transfer_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router)
@@ -24,3 +25,4 @@ api_router.include_router(admin_tag_router)
 api_router.include_router(site_router)
 api_router.include_router(mail_router)
 api_router.include_router(media_router)
+api_router.include_router(transfer_router)

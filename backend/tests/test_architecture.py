@@ -1,4 +1,4 @@
-"""Regression checks for the boundaries established during the engineering refactor."""
+"""Checks for application boundaries, configuration and request safety."""
 
 import ast
 from pathlib import Path

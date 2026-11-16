@@ -28,6 +28,7 @@ htmlcov/
 # Frontend dependencies and build output; commit dependency lockfiles.
 node_modules/
 /frontend/dist/
+/frontend/dist.*
 *.tsbuildinfo
 coverage/
 

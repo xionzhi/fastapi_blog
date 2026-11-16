@@ -5,8 +5,13 @@
 data
 frontend/node_modules
 frontend/dist
+frontend/dist.*
+frontend/*.tsbuildinfo
 **/__pycache__
 .pytest_cache
+.ruff_cache
+.mypy_cache
 .source-*
 .qa-*
 backend/tests
+AGENTS.md

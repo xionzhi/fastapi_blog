@@ -109,6 +109,11 @@ def begin_write(session: Session) -> None:
     session.connection().exec_driver_sql("BEGIN IMMEDIATE")
 
 
+def begin_snapshot(session: Session) -> None:
+    """Pin an explicit SQLite read snapshot across the tables in a content export."""
+    session.connection().exec_driver_sql("BEGIN")
+
+
 def read_settings(session: Session) -> dict[str, Any]:
     from app.modules.site.models import SiteSettingOrm
 

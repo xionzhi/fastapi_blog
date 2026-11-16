@@ -83,8 +83,13 @@ def slugify(value: str) -> str:
     return re.sub(r"-+", "-", re.sub(r"[^\w-]+", "-", value)).strip("-_")
 
 
-def validate_slug(value: str) -> str:
-    if not value or len(value) > 200 or slugify(value) != value or value in RESERVED:
+def validate_slug(value: str, *, allow_reserved: bool = False) -> str:
+    if (
+        not value
+        or len(value) > 200
+        or slugify(value) != value
+        or (not allow_reserved and value in RESERVED)
+    ):
         raise ValueError(
             "Slugs must use lowercase letters, numbers, Unicode letters, underscores, or hyphens and cannot use reserved paths"
         )

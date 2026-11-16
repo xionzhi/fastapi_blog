@@ -106,6 +106,53 @@ def test_custom_tag_slug_survives_article_save(admin, post_data):
     assert admin.get("/api/posts?tag=python-language").json()["total"] == 1
 
 
+def test_tag_edit_and_delete_preserve_associated_posts(admin, post_data):
+    created = admin.post("/api/admin/posts", json=post_data)
+    assert created.status_code == 201
+    post = created.json()
+    tag = post["tags"][0]
+    response = admin.put(
+        "/api/admin/tags/" + tag["id"],
+        json={"name": "Python language", "slug": "python-language", "description": "Updated"},
+    )
+    assert response.status_code == 200
+    updated = admin.get("/api/posts/" + post["slug"]).json()
+    assert updated["tags"][0]["name"] == "Python language"
+    assert admin.get("/api/posts?tag=python-language").json()["total"] == 1
+    assert admin.delete("/api/admin/tags/" + tag["id"]).status_code == 204
+    remaining = admin.get("/api/admin/posts/" + post["id"])
+    assert remaining.status_code == 200
+    assert remaining.json()["body"] == post_data["body"]
+    assert remaining.json()["tags"] == []
+    assert admin.get("/api/admin/tags").json() == []
+
+
+def test_site_settings_roundtrip_and_invalid_update_are_atomic(admin):
+    original = admin.get("/api/site").json()
+    payload = {
+        **original,
+        "description": "Updated description",
+        "cover": "/content/images/cover.webp",
+        "logo": "/content/images/logo.png",
+        "author": "Test author",
+        "author_image": "/content/images/author.png",
+        "author_bio": "Updated biography",
+        "posts_per_page": 7,
+        "navigation": [{"label": "Archive", "url": "/archive/"}],
+    }
+    response = admin.put("/api/admin/site", json=payload)
+    assert response.status_code == 200
+    persisted = admin.get("/api/site").json()
+    for key, value in payload.items():
+        assert persisted[key] == value
+    invalid = {**payload, "description": "Must not persist", "posts_per_page": 0}
+    assert admin.put("/api/admin/site", json=invalid).status_code == 422
+    assert admin.get("/api/site").json() == persisted
+    invalid_navigation = {**payload, "navigation": [{"label": "Bad", "url": "javascript:alert(1)"}]}
+    assert admin.put("/api/admin/site", json=invalid_navigation).status_code == 422
+    assert admin.get("/api/site").json() == persisted
+
+
 def test_management_documents_use_workspace_path(client):
     for path in ("/admin", "/admin/", "/admin/login", "/admin/posts"):
         response = client.get(path, follow_redirects=False)

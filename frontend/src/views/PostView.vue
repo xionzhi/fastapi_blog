@@ -4,7 +4,7 @@ import { getPost } from '../api/posts'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Link, List } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
+import { useAsyncResource } from '../composables/useAsyncResource'
 import { notify } from '../stores/notifications'
 import { site } from '../stores/site'
 import type { PostDetail as Post } from '../types'
@@ -13,39 +13,37 @@ import PostMeta from '../components/PostMeta.vue'
 import ArticleBody from '../components/ArticleBody.vue'
 const route = useRoute()
 const router = useRouter()
-const post = ref<Post>()
-const loading = ref(true)
-const error = ref('')
 const toc = ref<{ id: string; text: string; level: number }[]>([])
 const showToc = ref(false)
-let seq = 0
-async function load() {
-  const id = ++seq
-  loading.value = true
-  error.value = ''
-  post.value = undefined
-  try {
-    const data = await getPost(String(route.params.slug))
-    if (id !== seq) return
+const {
+  data: post,
+  loading,
+  error,
+  reload: load,
+} = useAsyncResource<Post | undefined>(
+  () => route.params.slug,
+  async (signal) => {
+    const data = await getPost(String(route.params.slug), signal)
+    if (signal.aborted) return
     if ('redirect' in data) {
       await router.replace(`/${data.redirect}/`)
       return
     }
-    post.value = data
-    document.title = `${data.title} · ${site.value.title}`
-    const doc = new DOMParser().parseFromString(data.html, 'text/html')
-    toc.value = [...doc.querySelectorAll('h1,h2,h3')].map((h) => ({
-      id: h.id,
-      text: h.textContent || '',
-      level: Number(h.tagName[1]),
-    }))
-  } catch (e) {
-    if (id === seq) error.value = errorMessage(e)
-  } finally {
-    if (id === seq) loading.value = false
-  }
-}
-watch(() => route.params.slug, load, { immediate: true })
+    return data
+  },
+)
+watch(post, (data) => {
+  showToc.value = false
+  toc.value = []
+  if (!data) return
+  document.title = `${data.title} · ${site.value.title}`
+  const doc = new DOMParser().parseFromString(data.html, 'text/html')
+  toc.value = [...doc.querySelectorAll('h1,h2,h3')].map((h) => ({
+    id: h.id,
+    text: h.textContent || '',
+    level: Number(h.tagName[1]),
+  }))
+})
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(window.location.href)
@@ -65,17 +63,18 @@ async function copyLink() {
   </header>
   <main
     id="main-content"
-    class="content"
+    class="content public-results"
+    :aria-busy="loading"
   >
     <p
       v-if="loading"
-      class="state-message"
+      class="refresh-status"
       role="status"
     >
       Loading posts…
     </p>
     <section
-      v-else-if="error"
+      v-if="error"
       class="state-message"
     >
       <h1>Unable to load this post</h1>
@@ -91,6 +90,7 @@ async function copyLink() {
     <article
       v-else-if="post"
       class="post detail-post"
+      :inert="loading ? true : undefined"
     >
       <header class="post-header">
         <h1 class="post-title">{{ post.title }}</h1>

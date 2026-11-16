@@ -5,16 +5,13 @@ import { getPublicTags } from '../api/tags'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChevronDown, Search } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
+import { useAsyncResource } from '../composables/useAsyncResource'
 import { site } from '../stores/site'
 import type { Page, PostSummary as Post, Tag } from '../types'
 import BlogNav from '../components/BlogNav.vue'
 import PostMeta from '../components/PostMeta.vue'
 import Pagination from '../components/Pagination.vue'
 const route = useRoute()
-const data = ref<Page<Post>>()
-const loading = ref(true)
-const error = ref('')
 const tags = ref<Tag[]>([])
 const page = computed(() => Math.max(1, Number(route.params.page) || 1))
 const title = computed(() =>
@@ -22,30 +19,34 @@ const title = computed(() =>
     ? tags.value.find((t) => t.slug === route.params.tag)?.name || route.params.tag
     : route.params.author || site.value.title,
 )
-let seq = 0
-async function load() {
-  const id = ++seq
-  loading.value = true
-  error.value = ''
-  try {
-    const result = await getPosts({
-      page: page.value,
-      limit: site.value.posts_per_page,
-      tag: String(route.params.tag || ''),
-      author: String(route.params.author || ''),
-    })
-    if (id === seq) data.value = result
-  } catch (e) {
-    if (id === seq) error.value = errorMessage(e)
-  } finally {
-    if (id === seq) loading.value = false
-  }
-  document.title = `${route.params.tag || route.params.author ? `${title.value} · ` : ''}${site.value.title}`
-}
+const {
+  data,
+  loading,
+  error,
+  reload: load,
+} = useAsyncResource<Page<Post>>(
+  () => route.path,
+  (signal) =>
+    getPosts(
+      {
+        page: page.value,
+        limit: site.value.posts_per_page,
+        tag: String(route.params.tag || ''),
+        author: String(route.params.author || ''),
+      },
+      signal,
+    ),
+)
+watch(
+  title,
+  () => {
+    document.title = `${route.params.tag || route.params.author ? `${title.value} · ` : ''}${site.value.title}`
+  },
+  { immediate: true },
+)
 getPublicTags()
   .then((v) => (tags.value = v))
   .catch(() => {})
-watch(() => route.fullPath, load, { immediate: true })
 function search() {
   document.dispatchEvent(new Event('blog-search'))
 }
@@ -109,62 +110,70 @@ function search() {
           <kbd>⌘ K</kbd>
         </button>
       </div>
-      <p
-        v-if="loading"
-        class="state-message"
-        role="status"
-      >
-        Loading posts…
-      </p>
       <div
-        v-else-if="error"
-        class="state-message"
+        class="public-results"
+        :aria-busy="loading"
       >
-        <p>{{ error }}</p>
-        <button
-          class="button-secondary"
-          @click="load"
+        <p
+          v-if="loading"
+          class="refresh-status"
+          role="status"
         >
-          Reload
-        </button>
-      </div>
-      <template v-else-if="data">
-        <article
-          v-for="post in data.items"
-          :key="post.id"
-          class="post list-post"
-        >
-          <header class="post-header">
-            <h2 class="post-title">
-              <RouterLink :to="`/${post.slug}/`">{{ post.title }}</RouterLink>
-            </h2>
-          </header>
-          <section class="post-excerpt">
-            <p>
-              {{ post.excerpt }}
-              <RouterLink
-                class="read-more"
-                :to="`/${post.slug}/`"
-                :aria-label="`Read ${post.title}`"
-              >
-                »
-              </RouterLink>
-            </p>
-          </section>
-          <PostMeta :post="post" />
-        </article>
+          Loading posts…
+        </p>
         <div
-          v-if="!data.items.length"
+          v-else-if="error"
           class="state-message"
         >
-          <p>{{ page > data.pages ? 'No posts on this page.' : 'No posts yet.' }}</p>
-          <RouterLink to="/">Back to home</RouterLink>
+          <p>{{ error }}</p>
+          <button
+            class="button-secondary"
+            @click="load"
+          >
+            Reload
+          </button>
         </div>
-        <Pagination
-          :page="page"
-          :pages="data.pages"
-        />
-      </template>
+        <div
+          v-if="data && !error"
+          :inert="loading ? true : undefined"
+        >
+          <article
+            v-for="post in data.items"
+            :key="post.id"
+            class="post list-post"
+          >
+            <header class="post-header">
+              <h2 class="post-title">
+                <RouterLink :to="`/${post.slug}/`">{{ post.title }}</RouterLink>
+              </h2>
+            </header>
+            <section class="post-excerpt">
+              <p>
+                {{ post.excerpt }}
+                <RouterLink
+                  class="read-more"
+                  :to="`/${post.slug}/`"
+                  :aria-label="`Read ${post.title}`"
+                >
+                  »
+                </RouterLink>
+              </p>
+            </section>
+            <PostMeta :post="post" />
+          </article>
+          <div
+            v-if="!data.items.length"
+            class="state-message"
+          >
+            <p>{{ page > data.pages ? 'No posts on this page.' : 'No posts yet.' }}</p>
+            <RouterLink to="/">Back to home</RouterLink>
+          </div>
+          <Pagination
+            :page="data.page"
+            :pages="data.pages"
+          />
+        </div>
+      </div>
     </div>
   </main>
 </template>

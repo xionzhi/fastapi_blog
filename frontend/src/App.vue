@@ -79,8 +79,6 @@ function isInternal(url: string): boolean {
               <ArrowUpRight :size="16" />
             </a>
           </template>
-          <RouterLink to="/archive/">Archive</RouterLink>
-          <RouterLink to="/tags/">Tags</RouterLink>
         </nav>
         <div class="drawer-bottom">
           <a

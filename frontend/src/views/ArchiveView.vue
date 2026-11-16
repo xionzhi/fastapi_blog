@@ -25,6 +25,7 @@ const groups = computed(() => {
   return values
 })
 async function load() {
+  if (loading.value) return
   loading.value = true
   error.value = ''
   try {

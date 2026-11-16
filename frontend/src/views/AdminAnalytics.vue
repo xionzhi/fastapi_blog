@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { getTraffic, type TrafficOverview } from '../api/analytics'
 import TrafficChart from '../components/analytics/TrafficChart.vue'
-import { errorMessage } from '../utils/format'
+import { useAsyncResource } from '../composables/useAsyncResource'
 
 const days = ref(30)
-const data = ref<TrafficOverview>()
-const loading = ref(false)
-const error = ref('')
-let request: AbortController | undefined
+const {
+  data,
+  loading,
+  error,
+  reload: load,
+} = useAsyncResource<TrafficOverview>(days, (signal) => getTraffic(days.value, signal))
 const numbers = new Intl.NumberFormat('en')
 const cards = computed(() => [
   { label: 'Page views', value: data.value?.total_views ?? 0 },
@@ -16,23 +18,6 @@ const cards = computed(() => [
   { label: 'Views today', value: data.value?.today_views ?? 0 },
   { label: 'Visitors today', value: data.value?.today_visitors ?? 0 },
 ])
-async function load(): Promise<void> {
-  request?.abort()
-  const current = new AbortController()
-  request = current
-  loading.value = true
-  error.value = ''
-  try {
-    const result = await getTraffic(days.value, current.signal)
-    if (!current.signal.aborted) data.value = result
-  } catch (cause) {
-    if (!current.signal.aborted) error.value = errorMessage(cause)
-  } finally {
-    if (!current.signal.aborted) loading.value = false
-  }
-}
-watch(days, load, { immediate: true })
-onBeforeUnmount(() => request?.abort())
 </script>
 <template>
   <div class="admin-page traffic-page">
@@ -52,93 +37,98 @@ onBeforeUnmount(() => request?.abort())
       </label>
     </header>
     <div
-      v-if="error"
-      class="form-error"
-      role="alert"
+      class="public-results"
+      :aria-busy="loading"
     >
-      <p>{{ error }}</p>
-      <button
-        class="button-secondary"
-        @click="load"
+      <div
+        v-if="error"
+        class="form-error"
+        role="alert"
       >
-        Try again
-      </button>
-    </div>
-    <p
-      v-if="loading"
-      class="muted"
-      role="status"
-    >
-      Loading traffic…
-    </p>
-    <template v-if="data && !error">
-      <p
-        v-if="!data.enabled"
-        class="traffic-note"
-      >
-        Traffic collection is disabled.
-      </p>
-      <p
-        v-if="data.daily_limit_reached"
-        class="traffic-note"
-      >
-        Today's collection limit has been reached. Collection resumes on the next UTC day.
-      </p>
-      <div class="stats-row traffic-cards">
-        <div
-          v-for="card in cards"
-          :key="card.label"
+        <p>{{ error }}</p>
+        <button
+          class="button-secondary"
+          @click="load"
         >
-          <span>{{ card.label }}</span>
-          <strong>{{ numbers.format(card.value) }}</strong>
-        </div>
+          Try again
+        </button>
       </div>
-      <section class="content-panel traffic-panel">
-        <h2>Traffic over time</h2>
-        <p
-          v-if="!data.total_views"
-          class="muted"
-        >
-          No traffic recorded for this period yet.
-        </p>
-        <TrafficChart :series="data.series" />
-      </section>
-      <section class="content-panel traffic-panel">
-        <h2>Popular pages</h2>
-        <p
-          v-if="!data.popular_pages.length"
-          class="muted"
-        >
-          Published pages appear here after a visit.
-        </p>
-        <ol
-          v-else
-          class="popular-pages"
-        >
-          <li
-            v-for="page in data.popular_pages"
-            :key="page.path"
-          >
-            <a
-              :href="page.path"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <strong>{{ page.title }}</strong>
-              <small>{{ page.path }}</small>
-            </a>
-            <span>{{ numbers.format(page.views) }} views</span>
-          </li>
-        </ol>
-      </section>
-      <p class="traffic-privacy">
-        Dates use UTC. Visitors are estimated per browser and day; the period average includes days
-        with no visits. Common bots, background prefetches and signed-in administrators are
-        excluded. Privacy signals (DNT/GPC) are respected. Daily anonymous IDs are cleaned hourly
-        after the day ends; only aggregates remain for {{ data.retention_days }} days. No raw IP
-        addresses, user agents, search terms or full referrers are stored in analytics.
+      <p
+        v-if="loading"
+        class="refresh-status muted"
+        role="status"
+      >
+        Loading traffic…
       </p>
-    </template>
+      <template v-if="data && !error">
+        <p
+          v-if="!data.enabled"
+          class="traffic-note"
+        >
+          Traffic collection is disabled.
+        </p>
+        <p
+          v-if="data.daily_limit_reached"
+          class="traffic-note"
+        >
+          Today's collection limit has been reached. Collection resumes on the next UTC day.
+        </p>
+        <div class="stats-row traffic-cards">
+          <div
+            v-for="card in cards"
+            :key="card.label"
+          >
+            <span>{{ card.label }}</span>
+            <strong>{{ numbers.format(card.value) }}</strong>
+          </div>
+        </div>
+        <section class="content-panel traffic-panel">
+          <h2>Traffic over time</h2>
+          <p
+            v-if="!data.total_views"
+            class="muted"
+          >
+            No traffic recorded for this period yet.
+          </p>
+          <TrafficChart :series="data.series" />
+        </section>
+        <section class="content-panel traffic-panel">
+          <h2>Popular pages</h2>
+          <p
+            v-if="!data.popular_pages.length"
+            class="muted"
+          >
+            Published pages appear here after a visit.
+          </p>
+          <ol
+            v-else
+            class="popular-pages"
+          >
+            <li
+              v-for="page in data.popular_pages"
+              :key="page.path"
+            >
+              <a
+                :href="page.path"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <strong>{{ page.title }}</strong>
+                <small>{{ page.path }}</small>
+              </a>
+              <span>{{ numbers.format(page.views) }} views</span>
+            </li>
+          </ol>
+        </section>
+        <p class="traffic-privacy">
+          Dates use UTC. Visitors are estimated per browser and day; the period average includes
+          days with no visits. Common bots, background prefetches and signed-in administrators are
+          excluded. Privacy signals (DNT/GPC) are respected. Daily anonymous IDs are cleaned hourly
+          after the day ends; only aggregates remain for {{ data.retention_days }} days. No raw IP
+          addresses, user agents, search terms or full referrers are stored in analytics.
+        </p>
+      </template>
+    </div>
   </div>
 </template>
 <style scoped>

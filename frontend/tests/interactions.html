@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Interaction regression checks</title>
+  </head>
+  <body>
+    <h1>Running interaction checks…</h1>
+    <ol id="results"></ol>
+    <script type="module">
+      import { effectScope, nextTick, ref } from 'vue'
+      import { useAsyncResource } from '../src/composables/useAsyncResource'
+      import { useScrollLock } from '../src/composables/useScrollLock'
+
+      const results = document.querySelector('#results')
+      const scopes = []
+      const assert = (condition, message) => {
+        if (!condition) throw new Error(message)
+        const item = document.createElement('li')
+        item.textContent = `PASS: ${message}`
+        results.append(item)
+      }
+      const settle = async () => {
+        await nextTick()
+        await nextTick()
+      }
+      try {
+        const source = ref('first')
+        const pending = []
+        let resource
+        const scope = effectScope()
+        scopes.push(scope)
+        scope.run(() => {
+          resource = useAsyncResource(
+            source,
+            (signal) =>
+              new Promise((resolve, reject) => {
+                pending.push({ signal, resolve, reject })
+              }),
+          )
+        })
+        source.value = 'second'
+        await settle()
+        assert(pending[0].signal.aborted, 'Superseded requests are cancelled')
+        pending[1].resolve('latest')
+        await settle()
+        pending[0].resolve('stale')
+        await settle()
+        assert(resource.data.value === 'latest', 'Late responses cannot overwrite newer results')
+        source.value = 'third'
+        await settle()
+        assert(
+          resource.loading.value && resource.data.value === 'latest',
+          'Refresh retains the previous result',
+        )
+        pending[2].reject(new Error('Temporary connection failure'))
+        await settle()
+        assert(
+          !resource.loading.value &&
+            resource.data.value === 'latest' &&
+            resource.error.value === 'Temporary connection failure',
+          'Failure preserves content and exposes a retryable error',
+        )
+        const retry = resource.reload()
+        assert(resource.error.value === '', 'Retry clears the previous error')
+        pending[3].resolve('recovered')
+        await retry
+        assert(resource.data.value === 'recovered', 'Retry replaces the result after success')
+        source.value = 'last'
+        await settle()
+        scope.stop()
+        assert(pending[4].signal.aborted, 'Leaving the view cancels the request')
+        pending[4].resolve('after-disposal')
+        await settle()
+        assert(resource.data.value === 'recovered', 'Disposed views ignore late responses')
+
+        document.body.style.overflow = 'clip'
+        const first = ref(false)
+        const second = ref(false)
+        const locks = effectScope()
+        scopes.push(locks)
+        locks.run(() => {
+          useScrollLock(first)
+          useScrollLock(second)
+        })
+        first.value = true
+        second.value = true
+        first.value = false
+        assert(document.body.style.overflow === 'hidden', 'Nested overlays keep the page locked')
+        second.value = false
+        assert(
+          document.body.style.overflow === 'clip',
+          'Closing overlays restores the original style',
+        )
+        first.value = true
+        locks.stop()
+        assert(
+          document.body.style.overflow === 'clip',
+          'Disposing an overlay releases its scroll lock',
+        )
+        document.querySelector('h1').textContent = 'All interaction checks passed'
+      } catch (error) {
+        document.querySelector('h1').textContent = 'Interaction checks failed'
+        const item = document.createElement('li')
+        item.textContent = `FAIL: ${error.message}`
+        results.append(item)
+      } finally {
+        scopes.forEach((scope) => scope.stop())
+        document.body.style.overflow = ''
+      }
+    </script>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useScrollLock } from './useScrollLock'
 
 /** Keep global navigation listeners, focus, and scroll locking in one lifecycle-owned place. */
 export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined>) {
@@ -9,6 +10,7 @@ export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined
   const searching = ref(false)
   let previousFocus: HTMLElement | null = null
   const overlayOpen = computed(() => menu.value || searching.value)
+  useScrollLock(overlayOpen)
 
   watch(
     () => route.fullPath,
@@ -19,10 +21,9 @@ export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined
   )
   watch(overlayOpen, async (open) => {
     if (open) previousFocus = document.activeElement as HTMLElement | null
-    document.body.style.overflow = open ? 'hidden' : ''
     await nextTick()
     if (menu.value) closeButton.value?.focus()
-    else if (!open) previousFocus?.focus()
+    else if (!open && previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
   })
 
   const openMenu = (): void => {
@@ -63,7 +64,6 @@ export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined
     window.removeEventListener('keydown', keyboard)
     document.removeEventListener('blog-menu', openMenu)
     document.removeEventListener('blog-search', openSearch)
-    document.body.style.overflow = ''
   })
   return { admin, menu, searching, trap }
 }

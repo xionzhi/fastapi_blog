@@ -99,6 +99,8 @@ npm run format:check
 
 不自动运行前端生产构建；需要时手动执行 `npm run build`。
 
+运行 Vite 开发服务器后，可打开 `http://127.0.0.1:5173/tests/interactions.html` 执行前端交互回归检查。测试使用内存中的模拟请求，验证旧请求取消、刷新保留内容、失败重试、离开页面后的响应处理，以及嵌套弹窗的滚动锁恢复，不写入博客数据。测试页面不会进入生产构建。
+
 ## Linux Docker 部署
 
 一台 Linux 主机即可运行整个项目：宿主机安装 [Docker Engine 与 Compose 插件](https://docs.docker.com/engine/install/)、Nginx 和 logrotate，Nginx 使用现有的 HTTPS 证书。域名的 A/AAAA 记录需要指向该主机；只有提供 IPv6 服务时才保留 AAAA。公网仅开放 80/443，SSH 限制为管理来源，应用 8000 端口只绑定本机。

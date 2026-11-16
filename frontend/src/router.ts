@@ -4,6 +4,35 @@ import { site } from './stores/site'
 import { notify } from './stores/notifications'
 import { errorMessage } from './utils/format'
 
+const COLLECTION_PATH = /^\/(?:page\/\d+\/?|(?:tag|author)\/[^/]+(?:\/page\/\d+)?\/?)?$/
+
+function waitForAnchor(id: string, path: string): Promise<HTMLElement | null> {
+  const ready = (): HTMLElement | null => {
+    const element = document.getElementById(id)
+    return element && !element.closest('[aria-busy="true"]') ? element : null
+  }
+  const present = ready()
+  if (present) return Promise.resolve(present)
+  return new Promise((resolve) => {
+    const finish = (element: HTMLElement | null): void => {
+      observer.disconnect()
+      clearTimeout(timer)
+      resolve(element)
+    }
+    const observer = new MutationObserver(() => {
+      if (window.location.pathname !== path) finish(null)
+      else if (ready()) finish(ready())
+    })
+    const timer = setTimeout(() => finish(null), 20000)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-busy'],
+    })
+  })
+}
+
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -38,11 +67,36 @@ export const router = createRouter({
     { path: '/:slug', component: () => import('./views/PostView.vue') },
     { path: '/:pathMatch(.*)*', component: () => import('./views/NotFound.vue') },
   ],
-  scrollBehavior(to, from, saved) {
+  async scrollBehavior(to, from, saved) {
     if (saved) return saved
+    if (to.path === from.path && !to.hash) return false
     if (to.path.startsWith('/workspace')) return { top: 0 }
-    if (to.hash) return { el: decodeURIComponent(to.hash), top: 30, behavior: 'smooth' }
-    if (to.path !== from.path && to.params.page) return { el: '#content', top: 20 }
+    if (to.hash) {
+      let id: string
+      try {
+        id = decodeURIComponent(to.hash.slice(1))
+      } catch {
+        return false
+      }
+      const element = await waitForAnchor(id, to.path)
+      return element
+        ? {
+            el: element,
+            top: 30,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+              ? 'auto'
+              : 'smooth',
+          }
+        : false
+    }
+    if (
+      to.path !== from.path &&
+      COLLECTION_PATH.test(to.path) &&
+      COLLECTION_PATH.test(from.path) &&
+      to.params.tag === from.params.tag &&
+      to.params.author === from.params.author
+    )
+      return { el: '#content', top: 20 }
     return { top: 0 }
   },
 })

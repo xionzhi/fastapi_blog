@@ -41,8 +41,8 @@ export interface PostStatistics {
 
 export const getPosts = (query: PostQuery = {}, signal?: AbortSignal): Promise<Page<PostSummary>> =>
   api(`/posts?${queryString(query)}`, { signal })
-export const getPost = (slug: string): Promise<PostDetail | PostRedirect> =>
-  api(`/posts/${encodeURIComponent(slug)}`)
+export const getPost = (slug: string, signal?: AbortSignal): Promise<PostDetail | PostRedirect> =>
+  api(`/posts/${encodeURIComponent(slug)}`, { signal })
 export const getAdminPosts = (query: PostQuery = {}): Promise<Page<AdminPostSummary>> =>
   api(`/admin/posts?${queryString(query)}`)
 export const getAdminPost = (id: string): Promise<AdminPostDetail> => api(`/admin/posts/${id}`)

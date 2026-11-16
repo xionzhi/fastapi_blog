@@ -1,10 +1,10 @@
 /* Casper 1.3.6 provides the public typography; these rules add Vue interactions and the editor. */
 :root {
+  scrollbar-gutter: stable;
   --ink: #2e2e2e;
   --line: #e9edef;
   --accent: #dd4a68;
   --green: #28664f;
-  scroll-behavior: smooth;
 }
 * {
   box-sizing: border-box;
@@ -156,6 +156,22 @@ h4 {
   max-width: 800px;
   margin: auto;
   font-size: 16px;
+}
+.public-results {
+  position: relative;
+  min-height: min(420px, 50vh);
+}
+.refresh-status {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 35px 20px;
+  margin: 0;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.8);
 }
 .state-message h1 {
   font-size: 32px;
@@ -456,6 +472,12 @@ h4 {
   font-size: 12px;
   margin-top: 25px;
 }
+.rss-link:hover,
+.rss-link:focus-visible {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .search-backdrop {
   position: fixed;
   inset: 0;
@@ -468,6 +490,9 @@ h4 {
   justify-content: center;
 }
 .search-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 12vh - 30px);
   background: #fff;
   width: 660px;
   max-width: 100%;
@@ -477,6 +502,7 @@ h4 {
   font-family: 'Open Sans', sans-serif;
 }
 .search-field {
+  flex-shrink: 0;
   padding: 20px 22px;
   display: flex;
   align-items: center;
@@ -497,8 +523,10 @@ h4 {
   outline: 0;
 }
 .search-results {
+  flex: 1 1 auto;
+  height: 55vh;
   max-height: 55vh;
-  min-height: 160px;
+  min-height: 0;
   overflow: auto;
   padding: 15px 25px;
 }
@@ -1291,6 +1319,20 @@ h4 {
   color: #b45b50;
   background: #fff1ef;
 }
+.post-results {
+  position: relative;
+  min-height: min(420px, 50vh);
+}
+.post-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: start center;
+  padding: 35px 25px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.75);
+}
 .admin-pagination {
   border-top: 1px solid #edf0e9;
   padding: 13px 23px;
@@ -1529,6 +1571,7 @@ h4 {
   border-right: 1px solid #edf1e9;
 }
 .editor-preview {
+  position: relative;
   min-width: 0;
   padding: 25px 0;
 }
@@ -2084,6 +2127,9 @@ h4 {
   }
   .search-backdrop {
     padding: 60px 12px 20px;
+  }
+  .search-dialog {
+    max-height: calc(100dvh - 80px);
   }
   .search-field {
     padding: 15px;

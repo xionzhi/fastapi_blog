@@ -20,6 +20,7 @@ const {
   uploading,
   error,
   previewError,
+  previewing,
   dirty,
   automaticSlug,
   save,
@@ -145,7 +146,7 @@ const {
           :class="{ split: mode === 'split' }"
         >
           <textarea
-            v-if="mode !== 'preview'"
+            v-show="mode !== 'preview'"
             ref="textarea"
             v-model="model.body"
             :placeholder="
@@ -157,7 +158,15 @@ const {
           <section
             v-if="mode !== 'write'"
             class="editor-preview"
+            :aria-busy="previewing"
           >
+            <p
+              v-if="previewing"
+              class="refresh-status muted"
+              role="status"
+            >
+              Generating preview…
+            </p>
             <p
               v-if="previewError"
               class="form-error"

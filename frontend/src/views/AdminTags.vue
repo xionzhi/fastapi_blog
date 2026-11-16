@@ -5,18 +5,24 @@ import { ref } from 'vue'
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
 import { errorMessage, slugify } from '../utils/format'
 import { notify } from '../stores/notifications'
+import { useScrollLock } from '../composables/useScrollLock'
 import type { Tag } from '../types'
 const tags = ref<Tag[]>([])
 const editing = ref(false)
+useScrollLock(editing)
 const id = ref('')
 const form = ref({ name: '', slug: '', description: '' })
 const busy = ref(false)
 const error = ref('')
+const loading = ref(true)
 async function load() {
+  loading.value = true
   try {
     tags.value = await getAdminTags()
   } catch (e) {
     error.value = errorMessage(e)
+  } finally {
+    loading.value = false
   }
 }
 function edit(tag?: Tag) {
@@ -74,11 +80,22 @@ load()
     >
       {{ error }}
     </p>
-    <div class="content-panel tag-table">
+    <div
+      class="content-panel tag-table public-results"
+      :aria-busy="loading"
+    >
+      <p
+        v-if="loading"
+        class="refresh-status muted"
+        role="status"
+      >
+        Loading tags…
+      </p>
       <div
         v-for="tag in tags"
         :key="tag.id"
         class="tag-table-row"
+        :inert="loading ? true : undefined"
       >
         <div>
           <strong>{{ tag.name }}</strong>
@@ -103,7 +120,7 @@ load()
         </div>
       </div>
       <p
-        v-if="!tags.length"
+        v-if="!loading && !error && !tags.length"
         class="panel-message muted"
       >
         No tags yet. You can also create them while writing.

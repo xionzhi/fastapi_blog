@@ -3,19 +3,13 @@ import { ref } from 'vue'
 import { X } from 'lucide-vue-next'
 import { notify } from '../stores/notifications'
 import { useCodeHighlighting } from '../composables/useCodeHighlighting'
+import { useImageLightbox } from '../composables/useImageLightbox'
 import 'prismjs/themes/prism.css'
 
 const props = defineProps<{ html: string }>()
 const root = ref<HTMLElement>()
-const lightbox = ref('')
+const { image: lightbox, dialog, open: click } = useImageLightbox(() => props.html)
 useCodeHighlighting(root, () => props.html)
-function click(e: MouseEvent): void {
-  const target = e.target as HTMLElement
-  if (target.tagName === 'IMG') {
-    e.preventDefault()
-    lightbox.value = (target as HTMLImageElement).src
-  }
-}
 async function copy(e: MouseEvent) {
   const pre = (e.target as HTMLElement).closest('pre')
   if (!pre) return
@@ -44,13 +38,17 @@ async function copy(e: MouseEvent) {
   <Teleport to="body">
     <div
       v-if="lightbox"
+      ref="dialog"
       class="image-lightbox"
       role="dialog"
       aria-modal="true"
       aria-label="Image preview"
       tabindex="0"
       @click="lightbox = ''"
-      @keydown.esc="lightbox = ''"
+      @keydown.esc.stop.prevent="lightbox = ''"
+      @keydown.tab.prevent
+      @keydown.ctrl.k.stop.prevent
+      @keydown.meta.k.stop.prevent
     >
       <button
         class="icon-button"

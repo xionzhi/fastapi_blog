@@ -51,6 +51,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   const uploading = ref(false)
   const error = ref('')
   const previewError = ref('')
+  const previewing = ref(false)
   const automaticSlug = ref(true)
   const previewTask = useDebouncedTask(350)
   let loadSequence = 0
@@ -113,8 +114,11 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   watch([() => model.value.body, () => model.value.format, mode], () => {
     if (mode.value === 'write') {
       previewTask.cancel()
+      previewing.value = false
       return
     }
+    previewing.value = true
+    previewError.value = ''
     previewTask.schedule(async (signal) => {
       try {
         const result = await previewPost(model.value.body, model.value.format, signal)
@@ -123,6 +127,8 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
         previewError.value = ''
       } catch (cause) {
         if (!signal.aborted) previewError.value = errorMessage(cause)
+      } finally {
+        if (!signal.aborted) previewing.value = false
       }
     })
   })
@@ -237,6 +243,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     uploading,
     error,
     previewError,
+    previewing,
     dirty,
     automaticSlug,
     save,

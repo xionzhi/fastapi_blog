@@ -17,7 +17,7 @@ const previousFocus = document.activeElement as HTMLElement | null
 onMounted(() => input.value?.focus())
 onUnmounted(() => {
   task.cancel()
-  previousFocus?.focus()
+  if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
 })
 watch(query, () => {
   task.cancel()
@@ -90,6 +90,7 @@ function trap(e: KeyboardEvent) {
       <div
         class="search-results"
         aria-live="polite"
+        :aria-busy="loading"
       >
         <p
           v-if="loading"

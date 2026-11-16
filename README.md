@@ -221,7 +221,11 @@ sudo install -m 0644 deploy/logrotate.conf /etc/ghost-blog/logrotate.conf
 
 统计属于浏览器端估算，会受到脚本拦截、浏览器存储限制和伪装机器人的影响，不适合作为计费或安全审计依据。平均每日访客包含零访问日期，不表示跨天去重人数。
 
+需要同时使用 Cloudflare Web Analytics 时，在服务器 `.env` 设置 `BLOG_CLOUDFLARE_ANALYTICS_ENABLED=true` 并重建容器。该开关只对公开 HTML 放行 Cloudflare 的脚本和统计上报域名，默认关闭，不会自行安装统计脚本；仍需在 Cloudflare 控制台启用 Web Analytics 自动注入。后台 `/workspace` 继续仅允许本站脚本，应在 Cloudflare Web Analytics Rules 中排除 `/workspace` 和 `/workspace/*` 的脚本注入。站内匿名统计可继续使用，也可通过 `BLOG_ANALYTICS_ENABLED=false` 独立关闭。
+
 ## 弱网访问
+
+首页及文章集合页直接输出封面布局和首屏列表，并附带公开站点配置及列表数据。前端接管时复用这份数据，封面提前加载且独立于页面布局，避免弱网下先出现文章列表、再被封面推下去。
 
 页面路由按需加载，归档每次加载 25 条摘要；列表数据库查询不读取正文和 HTML。图片原生懒加载并异步解码，代码块接近视口时再加载高亮语言；高亮模块加载失败时仍保留可读代码。
 

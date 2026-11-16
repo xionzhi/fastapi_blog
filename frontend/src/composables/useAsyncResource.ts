@@ -5,8 +5,9 @@ import { errorMessage } from '../utils/format'
 export function useAsyncResource<T>(
   source: WatchSource<unknown>,
   fetchResource: (signal: AbortSignal) => Promise<T>,
+  initial?: T,
 ) {
-  const data = shallowRef<T>()
+  const data = shallowRef<T>(initial)
   const loading = ref(false)
   const error = ref('')
   let request: AbortController | undefined
@@ -27,7 +28,7 @@ export function useAsyncResource<T>(
     }
   }
 
-  watch(source, reload, { immediate: true })
+  watch(source, reload, { immediate: initial === undefined })
   onScopeDispose(() => request?.abort())
   return { data, loading, error, reload }
 }

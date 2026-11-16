@@ -36,6 +36,7 @@ class Settings(BaseModel):
     max_request_bytes: int = Field(default=32 * 1024 * 1024, ge=1024)
     trusted_proxy_networks: list[str] = Field(default_factory=list)
     analytics_enabled: bool = True
+    cloudflare_analytics_enabled: bool = False
     analytics_retention_days: int = Field(default=90, ge=7, le=365)
     analytics_max_daily_views: int = Field(default=50_000, ge=100, le=1_000_000)
 
@@ -133,6 +134,7 @@ class Settings(BaseModel):
             "smtp_security": "BLOG_SMTP_SECURITY",
             "mail_from": "BLOG_MAIL_FROM",
             "analytics_enabled": "BLOG_ANALYTICS_ENABLED",
+            "cloudflare_analytics_enabled": "BLOG_CLOUDFLARE_ANALYTICS_ENABLED",
             "analytics_retention_days": "BLOG_ANALYTICS_RETENTION_DAYS",
             "analytics_max_daily_views": "BLOG_ANALYTICS_MAX_DAILY_VIEWS",
         }

@@ -13,18 +13,28 @@ from app.core.config import Settings
 from app.core.paths import WORKSPACE_PATH, is_workspace_path
 
 logger = logging.getLogger("blog.http")
-CONTENT_SECURITY_POLICY = (
-    "default-src 'self'; img-src 'self' https: http: data:; "
-    "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; "
-    "font-src 'self'; media-src 'self' https:; frame-src 'none'; object-src 'none'; "
-    "base-uri 'self'; form-action 'self'"
-)
+
+
+def content_security_policy(*, cloudflare: bool = False) -> str:
+    scripts = "'self'"
+    connections = "'self'"
+    if cloudflare:
+        scripts += " https://static.cloudflareinsights.com"
+        connections += " https://cloudflareinsights.com"
+    return (
+        "default-src 'self'; img-src 'self' https: http: data:; "
+        f"style-src 'self' 'unsafe-inline'; script-src {scripts}; connect-src {connections}; "
+        "font-src 'self'; media-src 'self' https:; frame-src 'none'; object-src 'none'; "
+        "base-uri 'self'; form-action 'self'"
+    )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, *, settings: Settings) -> None:
         super().__init__(app)
         self.settings = settings
+        self.public_csp = content_security_policy(cloudflare=settings.cloudflare_analytics_enabled)
+        self.workspace_csp = content_security_policy()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request.state.request_id = uuid.uuid4().hex
@@ -50,7 +60,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if request.url.path == f"{WORKSPACE_PATH}/reset-password":
             response.headers["Referrer-Policy"] = "no-referrer"
         if response.headers.get("content-type", "").startswith("text/html"):
-            response.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
+            response.headers["Content-Security-Policy"] = (
+                self.workspace_csp if is_workspace_path(request.url.path) else self.public_csp
+            )
         return response
 
 

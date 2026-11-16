@@ -11,6 +11,7 @@
       import { effectScope, nextTick, ref } from 'vue'
       import { useAsyncResource } from '../src/composables/useAsyncResource'
       import { useScrollLock } from '../src/composables/useScrollLock'
+      import { initialDocument, takeInitialPosts } from '../src/stores/initial'
 
       const results = document.querySelector('#results')
       const scopes = []
@@ -25,6 +26,48 @@
         await nextTick()
       }
       try {
+        const initialPage = { items: [], total: 0, page: 1, limit: 5, pages: 1 }
+        initialDocument.path = '/tag/中文'
+        initialDocument.posts = initialPage
+        assert(
+          takeInitialPosts('/') === undefined,
+          'Initial page data cannot leak into another route',
+        )
+        assert(
+          takeInitialPosts('/tag/%E4%B8%AD%E6%96%87/') === initialPage,
+          'Initial page data matches encoded collection URLs and trailing slashes',
+        )
+        assert(
+          takeInitialPosts('/tag/中文') === undefined,
+          'Initial page data is consumed once instead of reused after navigation',
+        )
+        const seededSource = ref('initial')
+        const initialScope = effectScope()
+        scopes.push(initialScope)
+        let seededResource
+        let seededRequests = 0
+        initialScope.run(() => {
+          seededResource = useAsyncResource(
+            seededSource,
+            async () => {
+              seededRequests++
+              return 'next page'
+            },
+            'server content',
+          )
+        })
+        assert(
+          seededResource.data.value === 'server content' &&
+            !seededResource.loading.value &&
+            seededRequests === 0,
+          'Server content is immediately available without a duplicate initial request',
+        )
+        seededSource.value = 'next'
+        await settle()
+        assert(
+          seededResource.data.value === 'next page' && seededRequests === 1,
+          'Seeded resources fetch normally after navigation',
+        )
         const source = ref('first')
         const pending = []
         let resource

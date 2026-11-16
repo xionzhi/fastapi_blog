@@ -12,10 +12,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
 
 from app.common.database import connect, read_settings
+from app.common.models import Page
 from app.core.config import Settings
 from app.core.paths import is_workspace_path
-from app.modules.post.models import PostOrm, PostRedirectOrm
+from app.modules.post.models import PostOrm, PostRedirectOrm, PostSummary
 from app.modules.post.service import list_posts, public_predicate
+from app.modules.publishing.models import InitialDocument
+from app.modules.publishing.rendering import home_content
 
 
 def rss(*, config: Settings) -> Response:
@@ -70,6 +73,8 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
     canonical = config.site_url + ("/" + quote(path, safe="/") if path else "") + "/"
     with connect(config) as session:
         info = read_settings(session)
+        initial = InitialDocument(site=info, path="/" + path)
+        home = False
         title, description, image = info["title"], info["description"], info["cover"]
         content = f"<h1>{escape(title)}</h1>"
         if is_workspace_path("/" + path):
@@ -86,8 +91,13 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
             )
             if page > data["pages"] or ((tag or author) and not data["total"]):
                 status = 404
-            for post in data["items"]:
-                content += f'<article><h2><a href="/{quote(post["slug"])}/">{escape(post["title"])}</a></h2><p>{escape(post["excerpt"])}</p></article>'
+            if path not in ("archive", "tags"):
+                home = True
+                initial.posts = Page[PostSummary].model_validate(data)
+                content = home_content(initial.site, initial.posts, tag, author)
+            else:
+                for post in data["items"]:
+                    content += f'<article><h2><a href="/{quote(post["slug"])}/">{escape(post["title"])}</a></h2><p>{escape(post["excerpt"])}</p></article>'
         else:
             post = session.scalar(select(PostOrm).where(PostOrm.slug == path, public_predicate()))
             if post is None:
@@ -132,7 +142,20 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
         if root is not None:
             if content:
                 root.clear()
-            root.append(BeautifulSoup(f'<div class="seo-content">{content}</div>', "html.parser"))
+            markup = content if home else f'<div class="seo-content">{content}</div>'
+            root.append(BeautifulSoup(markup, "html.parser"))
+        seed = document.new_tag("script", id="initial-document", type="application/json")
+        seed.string = initial.model_dump_json(exclude_none=True).replace("<", "\\u003c")
+        document.head.append(seed)
+        if home and initial.site.cover:
+            document.head.append(
+                document.new_tag(
+                    "link",
+                    rel="preload",
+                    href=initial.site.cover,
+                    attrs={"as": "image", "fetchpriority": "high"},
+                )
+            )
         return HTMLResponse(str(document), status_code=status)
 
 

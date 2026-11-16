@@ -42,6 +42,37 @@ def test_production_rejects_insecure_settings(tmp_path):
     assert production_settings(tmp_path).is_production
 
 
+@pytest.mark.parametrize("enabled", [False, True])
+def test_cloudflare_csp_is_opt_in_and_keeps_workspace_private(tmp_path, enabled):
+    settings = production_settings(tmp_path).model_copy(
+        update={"cloudflare_analytics_enabled": enabled}
+    )
+    with TestClient(build_application(settings=settings), base_url=settings.site_url) as client:
+        response = client.get("/")
+        directives = {
+            values[0]: values[1:]
+            for part in response.headers["content-security-policy"].split(";")
+            if (values := part.split())
+        }
+        assert directives["script-src"] == (
+            ["'self'", "https://static.cloudflareinsights.com"] if enabled else ["'self'"]
+        )
+        assert directives["connect-src"] == (
+            ["'self'", "https://cloudflareinsights.com"] if enabled else ["'self'"]
+        )
+        assert directives["object-src"] == ["'none'"]
+        assert "beacon.min.js" not in response.text
+        for path in ("/workspace", "/workspace/login", "/workspace/reset-password"):
+            policy = client.get(path).headers["content-security-policy"]
+            assert "cloudflareinsights.com" not in policy
+            assert "script-src 'self';" in policy
+
+
+def test_cloudflare_setting_can_be_loaded_from_environment():
+    settings = Settings.from_environment(environ={"BLOG_CLOUDFLARE_ANALYTICS_ENABLED": "true"})
+    assert settings.cloudflare_analytics_enabled is True
+
+
 def test_production_host_headers_docs_and_session_cookie(tmp_path):
     settings = production_settings(tmp_path)
     with TestClient(build_application(settings=settings), base_url=settings.site_url) as client:

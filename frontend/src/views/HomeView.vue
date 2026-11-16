@@ -7,12 +7,14 @@ import { useRoute } from 'vue-router'
 import { ChevronDown, Search } from 'lucide-vue-next'
 import { useAsyncResource } from '../composables/useAsyncResource'
 import { site } from '../stores/site'
+import { takeInitialPosts } from '../stores/initial'
 import type { Page, PostSummary as Post, Tag } from '../types'
 import BlogNav from '../components/BlogNav.vue'
 import PostMeta from '../components/PostMeta.vue'
 import Pagination from '../components/Pagination.vue'
 const route = useRoute()
-const tags = ref<Tag[]>([])
+const initialPosts = takeInitialPosts(route.path)
+const tags = ref<Tag[]>(initialPosts?.items.flatMap((post) => post.tags) ?? [])
 const page = computed(() => Math.max(1, Number(route.params.page) || 1))
 const title = computed(() =>
   route.params.tag
@@ -36,6 +38,7 @@ const {
       },
       signal,
     ),
+  initialPosts,
 )
 watch(
   title,
@@ -55,8 +58,16 @@ function search() {
   <header
     class="main-header blog-hero"
     :class="{ 'collection-hero': route.params.tag || route.params.author, 'no-cover': !site.cover }"
-    :style="site.cover ? { backgroundImage: `url('${site.cover}')` } : {}"
   >
+    <img
+      v-if="site.cover"
+      class="hero-cover"
+      :src="site.cover"
+      alt=""
+      aria-hidden="true"
+      fetchpriority="high"
+      decoding="async"
+    />
     <BlogNav overlay />
     <div class="hero-shade" />
     <div class="vertical">

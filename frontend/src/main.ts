@@ -8,16 +8,19 @@ import { notify } from './stores/notifications'
 import { errorMessage } from './utils/format'
 import './style.css'
 import './auth.css'
+import { initialDocument } from './stores/initial'
 
 configureHttpClient({ csrfToken: () => session.csrf, onUnauthorized: clearSession })
 
 async function bootstrap(): Promise<void> {
   try {
-    await loadSite()
+    if (!initialDocument.site) await loadSite()
   } catch (error) {
     notify(errorMessage(error))
   }
-  createApp(App).use(router).mount('#app')
+  const app = createApp(App).use(router)
+  await router.isReady()
+  app.mount('#app')
 }
 
 void bootstrap()

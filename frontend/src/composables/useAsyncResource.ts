@@ -7,7 +7,7 @@ export function useAsyncResource<T>(
   fetchResource: (signal: AbortSignal) => Promise<T>,
   initial?: T,
 ) {
-  const data = shallowRef<T>(initial)
+  const data = shallowRef<T | undefined>(initial)
   const loading = ref(false)
   const error = ref('')
   let request: AbortController | undefined

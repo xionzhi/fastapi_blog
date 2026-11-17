@@ -1,27 +1,20 @@
 <script setup lang="ts">
 import { getPosts } from '../api/posts'
-import { getPublicTags } from '../api/tags'
 
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ChevronDown, Search } from 'lucide-vue-next'
 import { useAsyncResource } from '../composables/useAsyncResource'
 import { usePageMetadata } from '../composables/usePageMetadata'
 import { site } from '../stores/site'
 import { takeInitialPosts } from '../stores/initial'
-import type { Page, PostSummary as Post, Tag } from '../types'
+import type { Page, PostSummary as Post } from '../types'
 import BlogNav from '../components/BlogNav.vue'
 import PostMeta from '../components/PostMeta.vue'
 import Pagination from '../components/Pagination.vue'
 const route = useRoute()
 const initialPosts = takeInitialPosts(route.path)
-const tags = ref<Tag[]>(initialPosts?.items.flatMap((post) => post.tags) ?? [])
 const page = computed(() => Math.max(1, Number(route.params.page) || 1))
-const title = computed(() =>
-  route.params.tag
-    ? tags.value.find((t) => t.slug === route.params.tag)?.name || route.params.tag
-    : route.params.author || site.value.title,
-)
 const {
   data,
   loading,
@@ -41,12 +34,15 @@ const {
     ),
   initialPosts,
 )
+const title = computed(() =>
+  route.params.tag
+    ? data.value?.items.flatMap((post) => post.tags).find((tag) => tag.slug === route.params.tag)
+        ?.name || route.params.tag
+    : route.params.author || site.value.title,
+)
 usePageMetadata(() => ({
   title: `${route.params.tag || route.params.author ? `${title.value} · ` : ''}${site.value.title}`,
 }))
-getPublicTags()
-  .then((v) => (tags.value = v))
-  .catch(() => {})
 function search() {
   document.dispatchEvent(new Event('blog-search'))
 }

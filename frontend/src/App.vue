@@ -1,16 +1,34 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { defineAsyncComponent, h, ref } from 'vue'
 import { X, ArrowUpRight, Rss } from 'lucide-vue-next'
 import { site } from './stores/site'
 import { toast } from './stores/notifications'
 import { useBlogNavigation } from './composables/useBlogNavigation'
 import { usePageViews } from './composables/usePageViews'
-import SearchDialog from './components/SearchDialog.vue'
+import SearchDialogLoading from './components/SearchDialogLoading.vue'
 
 usePageViews()
 
 const closeButton = ref<HTMLButtonElement>()
 const { admin, menu, searching, trap } = useBlogNavigation(closeButton)
+const SearchDialog = defineAsyncComponent({
+  loader: () => import('./components/SearchDialog.vue'),
+  delay: 150,
+  timeout: 20000,
+  loadingComponent: () =>
+    h(SearchDialogLoading, {
+      onClose: () => {
+        searching.value = false
+      },
+    }),
+  errorComponent: () =>
+    h(SearchDialogLoading, {
+      failed: true,
+      onClose: () => {
+        searching.value = false
+      },
+    }),
+})
 
 function isInternal(url: string): boolean {
   return url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/rss')

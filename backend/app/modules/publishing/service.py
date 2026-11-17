@@ -18,7 +18,7 @@ from app.core.paths import is_workspace_path
 from app.modules.post.models import PostOrm, PostRead, PostRedirectOrm, PostSummary
 from app.modules.post.service import get_public, list_posts, public_predicate
 from app.modules.publishing.models import InitialDocument
-from app.modules.publishing.rendering import home_content
+from app.modules.publishing.rendering import home_content, home_module_preloads
 from app.modules.site.service import get as get_site
 
 
@@ -124,6 +124,13 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
             description.strip() or f"Posts and notes by {info['author']} on {info['title']}."
         )
         document = BeautifulSoup(index.read_text(encoding="utf-8"), "html.parser")
+        if home:
+            existing = {node.get("href") for node in document.select('link[rel="modulepreload"]')}
+            for url in home_module_preloads(config.frontend_dir):
+                if url not in existing:
+                    document.head.append(
+                        document.new_tag("link", rel="modulepreload", href=url, crossorigin="")
+                    )
         document.title.string = title
         for node in document.select(
             'meta[name="description"],link[rel="canonical"],meta[property^="og:"]'

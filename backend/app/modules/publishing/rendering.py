@@ -1,11 +1,51 @@
 """Public first-paint markup with the same geometry as the Vue home page."""
 
+import json
 from html import escape
+from pathlib import Path
 from urllib.parse import quote
 
 from app.common.models import Page
 from app.modules.post.models import PostSummary
 from app.modules.site.models import SiteRead
+
+
+def home_module_preloads(frontend: Path) -> list[str]:
+    """Preload only the current route's static imports, leaving other pages and search lazy."""
+    try:
+        manifest = json.loads((frontend / ".vite" / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(manifest, dict):
+        return []
+    files: list[str] = []
+    visited: set[str] = set()
+
+    def visit(key: str) -> None:
+        if key in visited:
+            return
+        visited.add(key)
+        chunk = manifest.get(key)
+        if not isinstance(chunk, dict):
+            return
+        file = chunk.get("file")
+        if (
+            isinstance(file, str)
+            and file.startswith("assets/")
+            and file.endswith(".js")
+            and ".." not in file
+        ):
+            url = "/" + file
+            if url not in files:
+                files.append(url)
+        imports = chunk.get("imports", [])
+        if isinstance(imports, list):
+            for dependency in imports:
+                if isinstance(dependency, str):
+                    visit(dependency)
+
+    visit("src/views/HomeView.vue")
+    return files
 
 
 def image_attributes(site: SiteRead, role: str, original: str) -> str:

@@ -70,8 +70,18 @@ def test_image_requests_handle_cache_ranges_and_bounded_widths(tmp_path):
         assert (
             client.get("/content/images/avatar.png")
             .headers["cache-control"]
-            .startswith("public, max-age=86400")
+            .startswith("public, max-age=604800")
         )
+        original_response = client.get("/content/images/avatar.png")
+        for checked in (
+            client.head("/content/images/avatar.png"),
+            client.get("/content/images/avatar.png", headers={"Range": "bytes=0-5"}),
+            client.get(
+                "/content/images/avatar.png",
+                headers={"If-None-Match": original_response.headers["etag"]},
+            ),
+        ):
+            assert checked.headers["cache-control"].startswith("public, max-age=604800")
         assert client.get("/content/images/avatar.png?width=99999999").status_code == 400
         assert client.get("/content/images/missing.png?width=48").status_code == 404
 

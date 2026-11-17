@@ -146,6 +146,8 @@ Use a new backup filename each time, and back up `data/production/images/` separ
 
 Avatars use automatically generated WebP thumbnails. Cover images and logos are served from their original files without resizing or re-encoding. The disposable `data/production/image-cache/` directory is regenerated on demand and does not need to be backed up or transferred.
 
+Ordinary image URLs are cached for seven days. UUID uploads and versioned thumbnails use a one-year immutable cache. Use a new filename when replacing an image so visitors receive the update immediately.
+
 To reset an administrator password from the server console:
 
 ```bash
@@ -170,7 +172,7 @@ cd frontend
 npm run format:check
 ```
 
-With Vite running, open `/tests/interactions.html` or `/tests/review-fixes.html` for browser regression checks, and `/tests/performance.html` for contrast, font, and metadata checks. These pages do not modify blog data.
+With Vite running, open `/tests/interactions.html` or `/tests/review-fixes.html` for browser regression checks, `/tests/performance.html` for contrast, font, and metadata checks, and `/tests/loading.html` for homepage requests and deferred search loading. These pages do not modify blog data.
 
 For a manual production frontend build, run `npm run build` from `frontend/`. Docker performs this step during image creation. See [AGENTS.md](AGENTS.md) for project conventions.
 

@@ -66,7 +66,7 @@ class ResponseCacheMiddleware:
                         headers["Cache-Control"] = headers.get("Cache-Control") or (
                             "public, max-age=31536000, immutable"
                             if immutable
-                            else "public, max-age=86400, stale-while-revalidate=604800"
+                            else "public, max-age=604800, stale-while-revalidate=604800"
                         )
                     elif any(
                         path == prefix or path.startswith(prefix + "/") for prefix in PUBLIC_APIS

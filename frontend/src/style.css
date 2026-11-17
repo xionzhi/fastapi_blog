@@ -1555,20 +1555,6 @@ h4 {
   align-items: center;
   gap: 5px;
 }
-.admin .editor-format-bar select {
-  border: 0;
-  font-size: 11px;
-  padding: 6px 8px;
-  color: #9da991;
-  min-height: 35px;
-}
-.format-note {
-  font-size: 11px;
-  color: #acb3a5;
-  background: #f8f9f6;
-  padding: 10px 12px;
-  margin: 15px 0 0 !important;
-}
 .writing-area {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1692,11 +1678,6 @@ h4 {
   right: 5px;
   top: 5px;
   background: #fff;
-}
-.upload-button {
-  margin-top: 5px;
-  font-size: 10px;
-  padding: 8px;
 }
 .option-note {
   font-size: 10px !important;

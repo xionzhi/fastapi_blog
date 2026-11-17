@@ -8,6 +8,7 @@ from PIL import Image
 
 from app.application import build_application
 from app.core.config import Settings
+from app.modules.media import variants
 from app.modules.media.variants import describe, variant
 
 
@@ -34,6 +35,21 @@ def test_local_derivatives_are_small_versioned_and_preserve_originals(tmp_path):
     assert variant(source, tmp_path / "image-cache", 48) == (target, version)
     source.write_bytes(original + b"updated")
     assert describe(settings, "/content/images/file/avatar.png", "avatar").src != info.src
+
+
+def test_thumbnail_decoding_is_bounded_and_jpeg_draft_preserves_original(tmp_path, monkeypatch):
+    monkeypatch.setattr(variants, "MAX_DECODE_PIXELS", 100_000)
+    jpeg = tmp_path / "large.jpg"
+    png = tmp_path / "large.png"
+    for path in (jpeg, png):
+        Image.new("RGB", (1600, 1000), "blue").save(path)
+    original = jpeg.read_bytes()
+    result = variant(jpeg, tmp_path / "cache", 96)
+    assert result is not None
+    with Image.open(result[0]) as preview:
+        assert preview.width == 96
+    assert jpeg.read_bytes() == original
+    assert variant(png, tmp_path / "cache", 96) is None
 
 
 def test_image_requests_handle_cache_ranges_and_bounded_widths(tmp_path):
@@ -83,6 +99,7 @@ def test_image_requests_handle_cache_ranges_and_bounded_widths(tmp_path):
         ):
             assert checked.headers["cache-control"].startswith("public, max-age=604800")
         assert client.get("/content/images/avatar.png?width=99999999").status_code == 400
+        assert client.get("/content/images/avatar.png?width=480").status_code == 400
         assert client.get("/content/images/missing.png?width=48").status_code == 404
 
 

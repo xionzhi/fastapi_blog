@@ -9,6 +9,7 @@ Originally built for **无情老小儿** · [Live site](https://xionzhi.com/)
 - Markdown and HTML editor with previews, drafts, posts, and standalone pages.
 - Tags, content search, archives, RSS, and a sitemap.
 - Image uploads, code highlighting, and an image lightbox.
+- Image library with search, reusable editor selections, safe path changes, and usage-aware deletion.
 - Customizable site information, navigation, and cover images.
 - Anonymous traffic analytics and optional SMTP password recovery.
 - Native JSON import and export with conflict checks and image integrity verification.
@@ -134,6 +135,10 @@ Use [.env.example](.env.example) for development and [.env.production.example](.
 
 ## Content and backups
 
+Use **Images** in the workspace to browse existing files, upload images, copy URLs or Markdown, and rename or move files within the image directory. Path changes update saved article and site references; affected articles receive a new version so stale editor tabs cannot overwrite the update. External links and unsaved edits are not rewritten. Deletion is blocked while saved content uses an image. Images remain regular files in the existing data directory; no separate asset database is required.
+
+The editor's **Image library** inserts a selected image at the cursor in Markdown or HTML. The same picker is available for article covers, the home cover, logo, and author image.
+
 Use **Settings → Export and import data** to transfer content in the project's native JSON format. Exports include drafts and site settings; administrator accounts, sessions, analytics, SMTP credentials, and deployment configuration are excluded. JSON files are limited to 16 MB. Copy image files separately and review the import preview before applying changes.
 
 To back up a running production database:
@@ -171,8 +176,6 @@ On Windows, use `.\.venv\Scripts\python.exe` and `.\.venv\Scripts\ruff.exe` if t
 cd frontend
 npm run format:check
 ```
-
-With Vite running, open `/tests/interactions.html` or `/tests/review-fixes.html` for browser regression checks, `/tests/performance.html` for contrast, font, and metadata checks, and `/tests/loading.html` for homepage requests and deferred search loading. These pages do not modify blog data.
 
 For a manual production frontend build, run `npm run build` from `frontend/`. Docker performs this step during image creation. See [AGENTS.md](AGENTS.md) for project conventions.
 

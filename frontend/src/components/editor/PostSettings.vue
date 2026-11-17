@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ImagePlus, X } from 'lucide-vue-next'
+import ImageField from '../media/ImageField.vue'
 import type { EditorDraft } from '../../composables/usePostEditor'
 import type { Tag } from '../../types'
 
 const model = defineModel<EditorDraft>({ required: true })
 const tagText = defineModel<string>('tagText', { required: true })
-defineProps<{ tags: Tag[]; uploading: boolean }>()
-defineEmits<{ uploadCover: []; manualSlug: [] }>()
+defineProps<{ tags: Tag[]; busy: boolean }>()
+defineEmits<{ manualSlug: [] }>()
 </script>
 <template>
   <aside class="editor-options">
@@ -55,38 +55,12 @@ defineEmits<{ uploadCover: []; manualSlug: [] }>()
         maxlength="1000"
       />
     </label>
-    <label>
-      Cover image
-      <input
-        v-model="model.feature_image"
-        placeholder="Image URL or local path"
-      />
-      <span
-        v-if="model.feature_image"
-        class="cover-preview"
-      >
-        <img
-          :src="model.feature_image"
-          alt="Cover"
-        />
-        <button
-          class="icon-button"
-          @click="model.feature_image = ''"
-          aria-label="Remove cover"
-        >
-          <X :size="16" />
-        </button>
-      </span>
-      <button
-        class="button-secondary upload-button"
-        type="button"
-        :disabled="uploading"
-        @click="$emit('uploadCover')"
-      >
-        <ImagePlus :size="16" />
-        {{ uploading ? 'Uploading…' : 'Upload cover' }}
-      </button>
-    </label>
+    <ImageField
+      v-model="model.feature_image"
+      label="Cover image"
+      :disabled="busy"
+      preview
+    />
     <label>
       Author
       <input

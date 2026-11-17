@@ -3,6 +3,7 @@
 import hashlib
 import os
 import uuid
+from contextlib import suppress
 from pathlib import Path
 from threading import BoundedSemaphore
 from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
@@ -14,7 +15,9 @@ from app.modules.media.models import ImageRead
 from app.modules.media.service import MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, SUPPORTED_FORMATS
 
 WIDTHS = (48, 96)
-ENCODERS = BoundedSemaphore(2)
+LIBRARY_WIDTH = 480
+MAX_DECODE_PIXELS = 12_000_000
+ENCODERS = BoundedSemaphore(1)
 IMAGE_ERRORS = (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError)
 
 
@@ -61,24 +64,34 @@ def describe(settings: Settings, url: str, role: str) -> ImageRead | None:
     )
 
 
-def variant(source: Path, cache: Path, width: int) -> tuple[Path, str] | None:
+def variant(
+    source: Path, cache: Path, width: int, *, preview: bool = False
+) -> tuple[Path, str] | None:
     temporary = None
     try:
-        if width not in WIDTHS or source.stat().st_size > MAX_IMAGE_BYTES:
+        if (
+            width not in WIDTHS and not (preview and width == LIBRARY_WIDTH)
+        ) or source.stat().st_size > MAX_IMAGE_BYTES:
             return None
         version = revision(source)
-        key = hashlib.sha256(f"{source}:{version}:{width}".encode()).hexdigest()
+        key = hashlib.sha256(f"{source}:{version}:{width}:{preview}".encode()).hexdigest()
         target = cache / f"{key}.webp"
         if target.is_file():
             return target, version
         temporary = cache / f"{key}-{uuid.uuid4().hex}.tmp"
         with ENCODERS, Image.open(source, formats=list(SUPPORTED_FORMATS)) as image:
-            if image.width * image.height > MAX_IMAGE_PIXELS or getattr(
-                image, "is_animated", False
+            if image.width * image.height > MAX_IMAGE_PIXELS or (
+                getattr(image, "is_animated", False) and not preview
             ):
                 return None
-            image = ImageOps.exif_transpose(image)
-            image.thumbnail((width, MAX_IMAGE_PIXELS), Image.Resampling.LANCZOS)
+            # JPEG draft decoding reduces memory before loading full-resolution pixels.
+            image.draft("RGB", (width, width))
+            if image.width * image.height > MAX_DECODE_PIXELS:
+                return None
+            ImageOps.exif_transpose(image, in_place=True)
+            image.thumbnail(
+                (width, width if preview else MAX_IMAGE_PIXELS), Image.Resampling.LANCZOS
+            )
             if image.mode not in ("RGB", "RGBA"):
                 image = image.convert("RGBA" if "transparency" in image.info else "RGB")
             cache.mkdir(parents=True, exist_ok=True)
@@ -89,4 +102,5 @@ def variant(source: Path, cache: Path, width: int) -> tuple[Path, str] | None:
         return None
     finally:
         if temporary is not None:
-            temporary.unlink(missing_ok=True)
+            with suppress(OSError):
+                temporary.unlink(missing_ok=True)

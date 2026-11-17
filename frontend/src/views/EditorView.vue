@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ArrowLeft, ExternalLink, ImagePlus, Send } from 'lucide-vue-next'
+import { ArrowLeft, ExternalLink, Images, Send } from 'lucide-vue-next'
 import ArticleBody from '../components/ArticleBody.vue'
 import PostSettings from '../components/editor/PostSettings.vue'
+import ImagePicker from '../components/media/ImagePicker.vue'
 import { usePostEditor } from '../composables/usePostEditor'
 
 const textarea = ref<HTMLTextAreaElement>()
-const bodyFile = ref<HTMLInputElement>()
-const coverFile = ref<HTMLInputElement>()
 const {
   model,
   id,
@@ -18,14 +17,15 @@ const {
   loading,
   ready,
   busy,
-  uploading,
+  libraryOpen,
+  openLibrary,
+  selectImage,
   error,
   previewError,
   previewing,
   dirty,
   automaticSlug,
   save,
-  upload,
   load,
 } = usePostEditor(textarea)
 </script>
@@ -58,14 +58,14 @@ const {
         </a>
         <button
           class="button-secondary"
-          :disabled="busy || uploading || loading || !ready"
+          :disabled="busy || loading || !ready"
           @click="save('draft')"
         >
           {{ model.status === 'published' ? 'Unpublish' : 'Save draft' }}
         </button>
         <button
           class="button-primary"
-          :disabled="busy || uploading || loading || !ready || !model.title.trim()"
+          :disabled="busy || loading || !ready || !model.title.trim()"
           @click="save('published')"
         >
           <Send :size="15" />
@@ -128,28 +128,15 @@ const {
           </div>
           <div>
             <button
-              class="icon-button"
-              :disabled="uploading"
-              @click="bodyFile?.click()"
-              aria-label="Insert image"
+              class="text-button"
+              :disabled="busy"
+              @click="openLibrary"
             >
-              <ImagePlus :size="18" />
+              <Images :size="17" />
+              Image library
             </button>
-            <select
-              v-model="model.format"
-              aria-label="Content format"
-            >
-              <option value="markdown">Markdown</option>
-              <option value="html">HTML</option>
-            </select>
           </div>
         </div>
-        <p
-          v-if="model.format === 'html'"
-          class="format-note"
-        >
-          Switching formats reinterprets the current content.
-        </p>
         <div
           class="writing-area"
           :class="{ split: mode === 'split' }"
@@ -197,24 +184,22 @@ const {
         v-model="model"
         v-model:tag-text="tagText"
         :tags="tags"
-        :uploading="uploading"
-        @upload-cover="coverFile?.click()"
+        :busy="busy"
         @manual-slug="automaticSlug = false"
       />
     </div>
-    <input
-      ref="bodyFile"
-      type="file"
-      accept="image/png,image/jpeg,image/webp,image/gif"
-      hidden
-      @change="upload($event, false)"
-    />
-    <input
-      ref="coverFile"
-      type="file"
-      accept="image/png,image/jpeg,image/webp,image/gif"
-      hidden
-      @change="upload($event, true)"
+    <ImagePicker
+      v-if="libraryOpen"
+      insert
+      @select="selectImage"
+      @close="libraryOpen = false"
     />
   </div>
 </template>
+
+<style scoped>
+.editor-format-bar,
+.editor-format-bar > div:last-child {
+  flex-wrap: wrap;
+}
+</style>

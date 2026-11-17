@@ -9,6 +9,7 @@ import { notify } from '../stores/notifications'
 import type { Site } from '../types'
 import AdminMail from '../components/AdminMail.vue'
 import AdminDataTransfer from '../components/AdminDataTransfer.vue'
+import ImageField from '../components/media/ImageField.vue'
 const cloneSite = () => JSON.parse(JSON.stringify(site.value)) as Site
 const form = ref<Site>(cloneSite())
 const busy = ref(false)
@@ -76,20 +77,16 @@ function refreshForm(settingsImported: boolean): void {
               maxlength="500"
             />
           </label>
-          <label>
-            Home cover
-            <input
-              v-model="form.cover"
-              placeholder="/content/images/…"
-            />
-          </label>
-          <label>
-            Logo
-            <input
-              v-model="form.logo"
-              placeholder="/content/images/…"
-            />
-          </label>
+          <ImageField
+            v-model="form.cover"
+            label="Home cover"
+            :disabled="busy"
+          />
+          <ImageField
+            v-model="form.logo"
+            label="Logo"
+            :disabled="busy"
+          />
           <label>
             Default author
             <input
@@ -98,10 +95,11 @@ function refreshForm(settingsImported: boolean): void {
               maxlength="100"
             />
           </label>
-          <label>
-            Author image
-            <input v-model="form.author_image" />
-          </label>
+          <ImageField
+            v-model="form.author_image"
+            label="Author image"
+            :disabled="busy"
+          />
           <label class="wide">
             Author bio
             <textarea

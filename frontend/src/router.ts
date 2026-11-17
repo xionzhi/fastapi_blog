@@ -53,6 +53,7 @@ export const router = createRouter({
         { path: 'posts/new', component: () => import('./views/EditorView.vue') },
         { path: 'posts/:id', component: () => import('./views/EditorView.vue') },
         { path: 'tags', component: () => import('./views/AdminTags.vue') },
+        { path: 'images', component: () => import('./views/AdminMedia.vue') },
         { path: 'analytics', component: () => import('./views/AdminAnalytics.vue') },
         { path: 'settings', component: () => import('./views/AdminSettings.vue') },
       ],
@@ -121,17 +122,19 @@ router.afterEach((to, _from, failure) => {
       ? 'Analytics'
       : to.path.includes('/settings')
         ? 'Settings'
-        : to.path.includes('/tags')
-          ? 'Tags'
-          : to.path.includes('/login')
-            ? 'Sign in'
-            : to.path.includes('/forgot-password')
-              ? 'Forgot password'
-              : to.path.includes('/reset-password')
-                ? 'Reset password'
-                : to.params.id || to.path.endsWith('/new')
-                  ? 'Edit post'
-                  : 'Posts'
+        : to.path.includes('/images')
+          ? 'Images'
+          : to.path.includes('/tags')
+            ? 'Tags'
+            : to.path.includes('/login')
+              ? 'Sign in'
+              : to.path.includes('/forgot-password')
+                ? 'Forgot password'
+                : to.path.includes('/reset-password')
+                  ? 'Reset password'
+                  : to.params.id || to.path.endsWith('/new')
+                    ? 'Edit post'
+                    : 'Posts'
     updatePageMetadata(to.path, site.value, { title: `${title} · ${site.value.title}` })
   }
 })

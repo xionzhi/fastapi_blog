@@ -3,7 +3,16 @@ import { signOut } from '../api/auth'
 import { clearSession } from '../stores/session'
 
 import { useRouter } from 'vue-router'
-import { FileText, Tags, Settings, ExternalLink, LogOut, PenLine, BarChart3 } from 'lucide-vue-next'
+import {
+  FileText,
+  Tags,
+  Image,
+  Settings,
+  ExternalLink,
+  LogOut,
+  PenLine,
+  BarChart3,
+} from 'lucide-vue-next'
 import { errorMessage } from '../utils/format'
 import { notify } from '../stores/notifications'
 import { session } from '../stores/session'
@@ -40,6 +49,10 @@ async function logout() {
         <RouterLink to="/workspace/tags">
           <Tags :size="18" />
           Tags
+        </RouterLink>
+        <RouterLink to="/workspace/images">
+          <Image :size="18" />
+          Images
         </RouterLink>
         <RouterLink to="/workspace/settings">
           <Settings :size="18" />

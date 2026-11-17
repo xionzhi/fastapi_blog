@@ -82,6 +82,8 @@ class RequestSizeLimitMiddleware:
         limit = self.max_bytes
         if path in {"/api/admin/login", "/api/admin/mail"} or path.startswith("/api/auth/"):
             limit = min(limit, 8192)
+        elif path == "/api/admin/images" and scope["method"] in {"PUT", "DELETE"}:
+            limit = min(limit, 8192)
         elif path == "/api/analytics/events":
             limit = min(limit, 2048)
         try:

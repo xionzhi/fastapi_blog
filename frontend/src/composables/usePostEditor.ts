@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
@@ -8,7 +8,8 @@ import {
 } from 'vue-router'
 import { getAdminPost, previewPost, savePost, type PostInput } from '../api/posts'
 import { getAdminTags } from '../api/tags'
-import { uploadImage } from '../api/media'
+import type { LibraryImage } from '../api/media'
+import { imageMarkup } from '../utils/images'
 import { site } from '../stores/site'
 import { notify } from '../stores/notifications'
 import { errorMessage, slugify } from '../utils/format'
@@ -49,7 +50,8 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   const loading = ref(true)
   const ready = ref(false)
   const busy = ref(false)
-  const uploading = ref(false)
+  const libraryOpen = ref(false)
+  let selection: [number, number] = [0, 0]
   const error = ref('')
   const previewError = ref('')
   const previewing = ref(false)
@@ -71,6 +73,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     tagText.value = ''
     html.value = ''
     mode.value = 'write'
+    libraryOpen.value = false
     error.value = ''
     try {
       const [availableTags, post] = await Promise.all([
@@ -144,7 +147,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   })
 
   async function save(status: PostInput['status'] = model.value.status): Promise<void> {
-    if (busy.value || uploading.value || loading.value || !ready.value) return
+    if (busy.value || loading.value || !ready.value) return
     if (String(route.params.id || '') !== id.value) return
     const sequence = loadSequence
     busy.value = true
@@ -200,44 +203,42 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     }
   }
 
-  async function upload(event: Event, cover: boolean): Promise<void> {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (!file || busy.value || uploading.value || loading.value || !ready.value) return
-    const sequence = loadSequence
-    uploading.value = true
-    error.value = ''
-    try {
-      const { url } = await uploadImage(file)
-      if (sequence !== loadSequence) return
-      if (cover) model.value.feature_image = url
-      else {
-        const insertion =
-          model.value.format === 'markdown'
-            ? `\n![Image](${url})\n`
-            : `\n<img src="${url}" alt="Image">\n`
-        const start = textarea.value?.selectionStart ?? model.value.body.length
-        const end = textarea.value?.selectionEnd ?? start
-        model.value.body =
-          model.value.body.slice(0, start) + insertion + model.value.body.slice(end)
-      }
-    } catch (cause) {
-      if (sequence === loadSequence) error.value = errorMessage(cause)
-    } finally {
-      uploading.value = false
-      input.value = ''
-    }
+  function insertImage(url: string, alt: string, range: [number, number]): void {
+    const insertion = `\n${imageMarkup(url, alt, model.value.format)}\n`
+    const start = Math.min(range[0], model.value.body.length)
+    const end = Math.min(range[1], model.value.body.length)
+    model.value.body = model.value.body.slice(0, start) + insertion + model.value.body.slice(end)
+    void nextTick(() => {
+      textarea.value?.focus({ preventScroll: true })
+      textarea.value?.setSelectionRange(start + insertion.length, start + insertion.length)
+    })
+  }
+
+  function openLibrary(): void {
+    if (busy.value || !ready.value) return
+    selection = [
+      textarea.value?.selectionStart ?? model.value.body.length,
+      textarea.value?.selectionEnd ?? model.value.body.length,
+    ]
+    libraryOpen.value = true
+  }
+
+  function selectImage(image: LibraryImage, alt: string): void {
+    if (!ready.value || busy.value) return
+    if (mode.value === 'preview') mode.value = 'write'
+    insertImage(image.url, alt, selection)
+    libraryOpen.value = false
   }
 
   function beforeUnload(event: BeforeUnloadEvent): void {
-    if (!dirty.value && !busy.value && !uploading.value) return
+    if (!dirty.value && !busy.value) return
     event.preventDefault()
     event.returnValue = ''
   }
   const canLeave = (to: RouteLocationNormalized): boolean => {
     if (id.value && to.params.id === id.value) return true
-    if (busy.value || uploading.value) {
-      notify('Wait for the save or upload to finish before leaving this page.')
+    if (busy.value) {
+      notify('Wait for the save to finish before leaving this page.')
       return false
     }
     return !dirty.value || confirm('You have unsaved changes. Leave this page?')
@@ -260,14 +261,15 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     loading,
     ready,
     busy,
-    uploading,
+    libraryOpen,
+    openLibrary,
+    selectImage,
     error,
     previewError,
     previewing,
     dirty,
     automaticSlug,
     save,
-    upload,
     load,
   }
 }

@@ -10,7 +10,11 @@ defineProps<{ post: Post; compact?: boolean }>()
       <img
         v-if="site.author_image"
         class="author-thumb"
-        :src="site.author_image"
+        :src="site.images?.avatar?.src || site.author_image"
+        :srcset="site.images?.avatar?.srcset || undefined"
+        :sizes="site.images?.avatar?.sizes || undefined"
+        width="24"
+        height="24"
         :alt="post.author"
         loading="lazy"
         decoding="async"

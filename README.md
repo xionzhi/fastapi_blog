@@ -144,6 +144,8 @@ docker compose exec blog python -m app.cli backup /app/data/backup-001.sqlite3
 
 Use a new backup filename each time, and back up `data/production/images/` separately. The backup command creates a consistent SQLite snapshot; copying only the live database file can miss pending WAL data. Full database backups include administrator credentials, so store them securely.
 
+Avatars use automatically generated WebP thumbnails. Cover images and logos are served from their original files without resizing or re-encoding. The disposable `data/production/image-cache/` directory is regenerated on demand and does not need to be backed up or transferred.
+
 To reset an administrator password from the server console:
 
 ```bash
@@ -168,7 +170,7 @@ cd frontend
 npm run format:check
 ```
 
-With Vite running, open `/tests/interactions.html` or `/tests/review-fixes.html` for browser regression checks. These pages use mocked requests and do not modify blog data.
+With Vite running, open `/tests/interactions.html` or `/tests/review-fixes.html` for browser regression checks, and `/tests/performance.html` for contrast, font, and metadata checks. These pages do not modify blog data.
 
 For a manual production frontend build, run `npm run build` from `frontend/`. Docker performs this step during image creation. See [AGENTS.md](AGENTS.md) for project conventions.
 

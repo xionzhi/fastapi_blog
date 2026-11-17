@@ -63,7 +63,7 @@ class ResponseCacheMiddleware:
                         headers["Cache-Control"] = "public, max-age=31536000, immutable"
                     elif path.startswith("/content/images/"):
                         immutable = bool(re.search(r"/[a-f0-9]{32}\.[a-z]+$", path))
-                        headers["Cache-Control"] = (
+                        headers["Cache-Control"] = headers.get("Cache-Control") or (
                             "public, max-age=31536000, immutable"
                             if immutable
                             else "public, max-age=86400, stale-while-revalidate=604800"

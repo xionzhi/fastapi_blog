@@ -2,11 +2,11 @@ from pydantic import BaseModel
 
 from app.common.models import Page
 from app.modules.post.models import PostRead, PostSummary
-from app.modules.site.models import SiteInput
+from app.modules.site.models import SiteRead
 
 
 class InitialDocument(BaseModel):
-    site: SiteInput
+    site: SiteRead
     path: str
     posts: Page[PostSummary] | None = None
     post: PostRead | None = None

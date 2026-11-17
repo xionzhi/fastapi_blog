@@ -14,7 +14,9 @@ const siteOrigin = new URL(
 /** Replace document metadata together so client navigation cannot retain the previous page. */
 export function updatePageMetadata(path: string, site: Site, details: PageMetadata = {}): void {
   const title = details.title || site.title
-  const description = details.description ?? site.description
+  const description =
+    (details.description ?? site.description).trim() ||
+    `Posts and notes by ${site.author} on ${site.title}.`
   const image = details.image || site.cover
   const canonical = new URL(
     siteOrigin + '/' + path.replace(/^\/+|\/+$/g, '') + (path === '/' ? '' : '/'),

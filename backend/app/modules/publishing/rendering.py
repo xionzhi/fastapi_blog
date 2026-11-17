@@ -5,10 +5,20 @@ from urllib.parse import quote
 
 from app.common.models import Page
 from app.modules.post.models import PostSummary
-from app.modules.site.models import SiteInput
+from app.modules.site.models import SiteRead
 
 
-def home_content(site: SiteInput, posts: Page[PostSummary], tag: str, author: str) -> str:
+def image_attributes(site: SiteRead, role: str, original: str) -> str:
+    info = site.images.get(role)
+    if info is None:
+        return f'src="{escape(original)}"'
+    attrs = f'src="{escape(info.src)}" width="{info.width}" height="{info.height}"'
+    if info.srcset:
+        attrs += f' srcset="{escape(info.srcset)}" sizes="{escape(info.sizes)}"'
+    return attrs
+
+
+def home_content(site: SiteRead, posts: Page[PostSummary], tag: str, author: str) -> str:
     title = author or site.title
     if tag:
         title = next((t.name for p in posts.items for t in p.tags if t.slug == tag), tag)
@@ -19,13 +29,13 @@ def home_content(site: SiteInput, posts: Page[PostSummary], tag: str, author: st
     if not site.cover:
         classes += " no-cover"
     cover = (
-        f'<img class="hero-cover" src="{escape(site.cover)}" alt="" '
+        f'<img class="hero-cover" {image_attributes(site, "cover", site.cover)} alt="" '
         'fetchpriority="high" decoding="async" aria-hidden="true">'
         if site.cover
         else ""
     )
     brand = (
-        f'<a class="blog-logo" href="/"><img src="{escape(site.logo)}" '
+        f'<a class="blog-logo" href="/"><img {image_attributes(site, "logo", site.logo)} '
         f'alt="{escape(site.title)}"></a>'
         if site.logo
         else f'<a class="brand-text" href="/">{escape(site.title)}</a>'
@@ -43,7 +53,7 @@ def home_content(site: SiteInput, posts: Page[PostSummary], tag: str, author: st
     for post in posts.items:
         url = f"/{quote(post.slug)}/"
         avatar = (
-            f'<img class="author-thumb" src="{escape(site.author_image)}" '
+            f'<img class="author-thumb" {image_attributes(site, "avatar", site.author_image)} '
             f'alt="{escape(post.author)}" loading="lazy" decoding="async">'
             if site.author_image
             else ""

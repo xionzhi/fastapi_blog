@@ -60,6 +60,8 @@ function search() {
       v-if="site.cover"
       class="hero-cover"
       :src="site.cover"
+      :width="site.images?.cover?.width"
+      :height="site.images?.cover?.height"
       alt=""
       aria-hidden="true"
       fetchpriority="high"

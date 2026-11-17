@@ -30,6 +30,10 @@ export interface Page<T> {
   pages: number
 }
 export interface Site {
+  images?: Record<
+    string,
+    { src: string; width: number; height: number; srcset: string; sizes: string }
+  >
   title: string
   description: string
   cover: string

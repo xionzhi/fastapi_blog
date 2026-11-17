@@ -18,7 +18,9 @@ function openMenu(): void {
       to="/"
     >
       <img
-        :src="site.logo"
+        :src="site.images?.logo?.src || site.logo"
+        :width="site.images?.logo?.width"
+        :height="site.images?.logo?.height"
         :alt="site.title"
       />
     </RouterLink>

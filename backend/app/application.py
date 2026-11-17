@@ -71,7 +71,9 @@ def build_application(*, settings: Settings) -> FastAPI:
     app.include_router(api_router)
     app.mount(
         "/content/images",
-        ImageStaticFiles(directory=settings.images, check_dir=False),
+        ImageStaticFiles(
+            directory=settings.images, cache=settings.data_dir / "image-cache", check_dir=False
+        ),
         name="images",
     )
     for directory in ("assets", "legacy"):

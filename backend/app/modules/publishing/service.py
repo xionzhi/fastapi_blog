@@ -19,6 +19,7 @@ from app.modules.post.models import PostOrm, PostRead, PostRedirectOrm, PostSumm
 from app.modules.post.service import get_public, list_posts, public_predicate
 from app.modules.publishing.models import InitialDocument
 from app.modules.publishing.rendering import home_content
+from app.modules.site.service import get as get_site
 
 
 def rss(*, config: Settings) -> Response:
@@ -73,7 +74,9 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
     canonical = config.site_url + ("/" + quote(path, safe="/") if path else "") + "/"
     with connect(config) as session:
         info = read_settings(session)
-        initial = InitialDocument(site=info, path="/" + path)
+        initial = InitialDocument(
+            site=get_site(db_session=session, include_stats=False, settings=config), path="/" + path
+        )
         home = False
         title, description, image = info["title"], info["description"], info["cover"]
         content = f"<h1>{escape(title)}</h1>"
@@ -117,6 +120,9 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
                 description = post.excerpt or post.plain_text[:180]
                 image = post.feature_image or image
                 content = f"<article><h1>{escape(post.title)}</h1>{post.html}</article>"
+        description = (
+            description.strip() or f"Posts and notes by {info['author']} on {info['title']}."
+        )
         document = BeautifulSoup(index.read_text(encoding="utf-8"), "html.parser")
         document.title.string = title
         for node in document.select(

@@ -119,10 +119,12 @@ class ImportPreview(BaseModel):
     changed_files: list[str] = Field(default_factory=list)
     conflicts: list[str] = Field(default_factory=list)
     can_import: bool = True
+    can_skip_conflicts: bool = False
 
 
 class ImportResult(BaseModel):
     imported_posts: int
     imported_tags: int
     skipped_posts: int
+    skipped_conflicts: int = 0
     settings_imported: bool

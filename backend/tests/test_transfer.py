@@ -124,6 +124,60 @@ def test_conflict_blocks_all_imported_content(admin):
     assert admin.get("/api/posts/must-not-be-added").status_code == 404
 
 
+def test_skip_conflicts_imports_independent_records_and_preserves_existing_content(admin):
+    original = native_data()
+    assert apply(admin, original).status_code == 200
+    original_post = original["posts"][0]
+    original_tag = original["tags"][0]
+    data = native_data()
+    changed = {**original_post, "title": "Incoming replacement", "tags": []}
+    new_tag = {**original_tag, "slug": "new-tag", "id": uuid.uuid4().hex}
+    conflicting_tag = {
+        **original_tag,
+        "id": uuid.uuid4().hex,
+        "description": "Incoming replacement",
+    }
+    new = {
+        **data["posts"][0],
+        "slug": "safe-new-post",
+        "tags": [new_tag["id"]],
+    }
+    dependent = {
+        **new,
+        "id": uuid.uuid4().hex,
+        "slug": "uses-conflicting-tag",
+        "tags": [conflicting_tag["id"]],
+    }
+    data["tags"] = [conflicting_tag, new_tag]
+    data["posts"] = [changed, new, dependent]
+    data["redirects"] = [
+        {"slug": "old-native-url", "post_id": new["id"]},
+        {"slug": "skip-this-redirect", "post_id": changed["id"]},
+        {"slug": "new-redirect", "post_id": new["id"]},
+    ]
+
+    checked = preview(admin, data).json()
+    assert not checked["can_import"] and checked["can_skip_conflicts"]
+    assert checked["new_posts"] == 1 and len(checked["conflicts"]) == 5
+    assert apply(admin, data).status_code == 409
+    imported = apply(admin, data, skip_conflicts=True)
+    assert imported.status_code == 200, imported.text
+    assert imported.json()["imported_posts"] == 1
+    assert imported.json()["imported_tags"] == 1
+    assert imported.json()["skipped_conflicts"] == 5
+    assert admin.get("/api/posts/native-article").json()["title"] == original_post["title"]
+    assert admin.get("/api/posts/old-native-url").json()["redirect"] == "native-article"
+    assert admin.get("/api/posts/new-redirect").json()["redirect"] == "safe-new-post"
+    assert admin.get("/api/posts/skip-this-redirect").status_code == 404
+    assert admin.get("/api/posts/uses-conflicting-tag").status_code == 404
+    tags = {tag["slug"]: tag["description"] for tag in admin.get("/api/admin/tags").json()}
+    assert tags == {"api": original_tag["description"], "new-tag": original_tag["description"]}
+
+    repeated = apply(admin, data, skip_conflicts=True).json()
+    assert repeated["imported_posts"] == repeated["imported_tags"] == 0
+    assert repeated["skipped_posts"] == 1
+
+
 def test_different_tag_ids_with_identical_slug_reuse_target_tag(admin):
     data = native_data()
     assert apply(admin, data).status_code == 200
@@ -156,7 +210,8 @@ def test_relative_files_are_resolved_in_target_storage_and_checked(admin):
     target.write_bytes(b"different image")
     checked = preview(admin, data).json()
     assert checked["changed_files"] and not checked["can_import"]
-    assert apply(admin, data).status_code == 409
+    assert not checked["can_skip_conflicts"]
+    assert apply(admin, data, skip_conflicts=True).status_code == 409
     target.write_bytes(content)
     assert preview(admin, data).json()["missing_files"] == []
     assert apply(admin, data).status_code == 200

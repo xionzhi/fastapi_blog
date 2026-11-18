@@ -19,12 +19,16 @@ export function useDataTransfer() {
   const error = ref('')
   const activity = ref<'' | 'export' | 'preview' | 'import'>('')
   const includeSettings = ref(false)
+  const skipConflicts = ref(false)
   const confirmed = ref(false)
   let content = ''
   let disposed = false
   let request: AbortController | undefined
   const busy = computed(() => Boolean(activity.value))
-  const canImport = computed(() => !busy.value && preview.value?.can_import && confirmed.value)
+  const canProceed = computed(
+    () => preview.value?.can_import || (preview.value?.can_skip_conflicts && skipConflicts.value),
+  )
+  const canImport = computed(() => !busy.value && canProceed.value && confirmed.value)
 
   async function download(): Promise<void> {
     if (busy.value) return
@@ -55,6 +59,7 @@ export function useDataTransfer() {
     if (!file || busy.value) return
     preview.value = undefined
     result.value = undefined
+    skipConflicts.value = false
     confirmed.value = false
     error.value = ''
     filename.value = file.name
@@ -80,7 +85,12 @@ export function useDataTransfer() {
     activity.value = 'import'
     error.value = ''
     try {
-      result.value = await importData(content, preview.value.sha256, includeSettings.value)
+      result.value = await importData(
+        content,
+        preview.value.sha256,
+        includeSettings.value,
+        skipConflicts.value,
+      )
       preview.value = undefined
       confirmed.value = false
       content = ''
@@ -115,7 +125,9 @@ export function useDataTransfer() {
     activity,
     busy,
     canImport,
+    canProceed,
     includeSettings,
+    skipConflicts,
     confirmed,
     download,
     selectFile,

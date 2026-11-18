@@ -16,12 +16,14 @@ export interface ImportPreview {
   changed_files: string[]
   conflicts: string[]
   can_import: boolean
+  can_skip_conflicts: boolean
 }
 
 export interface ImportResult {
   imported_posts: number
   imported_tags: number
   skipped_posts: number
+  skipped_conflicts: number
   settings_imported: boolean
 }
 
@@ -37,8 +39,9 @@ export const importData = (
   content: string,
   sha256: string,
   includeSettings: boolean,
+  skipConflicts: boolean,
 ): Promise<ImportResult> =>
-  api(`/admin/data/import?${queryString({ sha256, include_settings: includeSettings })}`, {
-    method: 'POST',
-    body: content,
-  })
+  api(
+    `/admin/data/import?${queryString({ sha256, include_settings: includeSettings, skip_conflicts: skipConflicts })}`,
+    { method: 'POST', body: content },
+  )

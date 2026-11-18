@@ -67,6 +67,7 @@ async def import_data(
     settings: SettingsDependency,
     sha256: Annotated[str, Query(pattern=r"^[a-f0-9]{64}$")],
     include_settings: bool = False,
+    skip_conflicts: bool = False,
 ) -> ImportResult:
     content = await read_content(request)
     actual = hashlib.sha256(content).hexdigest()
@@ -84,4 +85,5 @@ async def import_data(
         data=data,
         sha256=actual,
         include_settings=include_settings,
+        skip_conflicts=skip_conflicts,
     )

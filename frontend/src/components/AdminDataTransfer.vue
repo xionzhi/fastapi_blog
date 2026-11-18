@@ -10,7 +10,9 @@ const {
   activity,
   busy,
   canImport,
+  canProceed,
   includeSettings,
+  skipConflicts,
   confirmed,
   download,
   selectFile,
@@ -91,9 +93,9 @@ async function importContent(): Promise<void> {
         role="alert"
       >
         <p v-if="preview.conflicts.length">
-          Import blocked by {{ preview.conflicts.length }}
-          {{ preview.conflicts.length === 1 ? 'content conflict' : 'content conflicts' }}. Resolve
-          the conflicts and preview the file again.
+          {{ preview.conflicts.length }}
+          {{ preview.conflicts.length === 1 ? 'entry conflicts' : 'entries conflict' }}
+          with existing content or depend on a conflicting entry.
         </p>
         <p v-if="preview.changed_files.length">
           {{ preview.changed_files.length }}
@@ -109,6 +111,17 @@ async function importContent(): Promise<void> {
           </li>
         </ul>
       </div>
+      <label
+        v-if="preview.can_skip_conflicts"
+        class="transfer-checkbox"
+      >
+        <input
+          v-model="skipConflicts"
+          type="checkbox"
+          :disabled="busy"
+        />
+        Skip conflicting entries and keep existing content
+      </label>
       <div v-if="preview.missing_files.length">
         <p>
           {{ preview.missing_files.length }}
@@ -145,7 +158,7 @@ async function importContent(): Promise<void> {
         />
         I have reviewed this preview and want to import this data.
       </label>
-      <p v-if="preview.can_import && !confirmed">
+      <p v-if="canProceed && !confirmed">
         Select the confirmation checkbox above before importing.
       </p>
       <button
@@ -164,6 +177,10 @@ async function importContent(): Promise<void> {
       Import completed: {{ result.imported_posts }} content items and
       {{ result.imported_tags }} tags added; {{ result.skipped_posts }} identical content items
       skipped.
+      <template v-if="result.skipped_conflicts">
+        {{ result.skipped_conflicts }} conflicting
+        {{ result.skipped_conflicts === 1 ? 'entry' : 'entries' }} skipped.
+      </template>
       {{
         result.settings_imported ? 'Site settings were imported.' : 'Site settings were preserved.'
       }}

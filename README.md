@@ -2,7 +2,7 @@
 
 A self-hosted personal blog built with FastAPI, Vue 3, and SQLite. Write, publish, and manage your content from a browser, then deploy the entire application as a single Docker service.
 
-Originally built for **无情老小儿** · [Live site](https://xionzhi.com/)
+Originally built for · [Live site](https://xionzhi.com/)
 
 ## Features
 

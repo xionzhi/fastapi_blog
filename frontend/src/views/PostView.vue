@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { getPost } from '../api/posts'
+import { getDraftPreview, getPost } from '../api/posts'
 
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Link, List } from 'lucide-vue-next'
 import { useAsyncResource } from '../composables/useAsyncResource'
@@ -15,16 +15,18 @@ import PostMeta from '../components/PostMeta.vue'
 import ArticleBody from '../components/ArticleBody.vue'
 const route = useRoute()
 const router = useRouter()
+const preview = computed(() => route.name === 'draft-preview')
 const toc = ref<{ id: string; text: string; level: number }[]>([])
 const showToc = ref(false)
 const {
-  data: post,
+  data: loadedPost,
   loading,
   error,
   reload: load,
 } = useAsyncResource<Post | undefined>(
-  () => route.params.slug,
+  () => route.path,
   async (signal) => {
+    if (preview.value) return getDraftPreview(String(route.params.id), signal)
     const data = await getPost(String(route.params.slug), signal)
     if (signal.aborted) return
     if ('redirect' in data) {
@@ -35,6 +37,13 @@ const {
   },
   takeInitialPost(route.path),
 )
+const post = computed(() => {
+  const data = loadedPost.value
+  if (!data) return undefined
+  if (preview.value)
+    return data.status === 'draft' && data.id === route.params.id ? data : undefined
+  return data.status === 'published' && data.slug === route.params.slug ? data : undefined
+})
 usePageMetadata(() => {
   const data = post.value
   if (!data || data.slug !== route.params.slug) return {}
@@ -99,7 +108,7 @@ async function copyLink() {
       v-if="error"
       class="state-message"
     >
-      <h1>Unable to load this post</h1>
+      <h1>{{ preview ? 'Unable to load this preview' : 'Unable to load this post' }}</h1>
       <p>{{ error }}</p>
       <button
         class="button-secondary"
@@ -115,6 +124,12 @@ async function copyLink() {
       :inert="loading ? true : undefined"
     >
       <header class="post-header">
+        <p
+          v-if="preview"
+          class="muted"
+        >
+          Draft preview
+        </p>
         <h1 class="post-title">{{ post.title }}</h1>
         <PostMeta
           v-if="post.type === 'post'"

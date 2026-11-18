@@ -1679,10 +1679,6 @@ h4 {
   top: 5px;
   background: #fff;
 }
-.option-note {
-  font-size: 10px !important;
-  line-height: 1.9;
-}
 .editor-error {
   margin: 15px 25px !important;
 }
@@ -2347,11 +2343,8 @@ h4 {
     grid-template-columns: 1fr 1fr;
     gap: 22px 18px;
   }
-  .editor-options h2,
-  .editor-options .option-note {
-    grid-column: 1/-1;
-  }
   .editor-options h2 {
+    grid-column: 1/-1;
     margin: 0;
   }
   .editor-options label {

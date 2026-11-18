@@ -27,6 +27,14 @@ export function updatePageMetadata(path: string, site: Site, details: PageMetada
       'meta[name="description"],link[rel="canonical"],meta[property^="og:"],meta[name="robots"]',
     )
     .forEach((node) => node.remove())
+  if (/^\/preview\/[^/]/.test(path)) {
+    document.title = `Draft preview · ${site.title}`
+    const robots = document.createElement('meta')
+    robots.name = 'robots'
+    robots.content = 'noindex,nofollow'
+    document.head.append(robots)
+    return
+  }
   const link = document.createElement('link')
   link.rel = 'canonical'
   link.href = canonical

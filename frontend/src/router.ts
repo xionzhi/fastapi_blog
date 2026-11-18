@@ -66,6 +66,12 @@ export const router = createRouter({
     { path: '/author/:author', component: () => import('./views/HomeView.vue') },
     { path: '/archive', component: () => import('./views/ArchiveView.vue') },
     { path: '/tags', component: () => import('./views/TagsView.vue') },
+    {
+      path: '/preview/:id([a-f0-9]{32})',
+      name: 'draft-preview',
+      sensitive: true,
+      component: () => import('./views/PostView.vue'),
+    },
     { path: '/:slug', component: () => import('./views/PostView.vue') },
     { path: '/:pathMatch(.*)*', component: () => import('./views/NotFound.vue') },
   ],

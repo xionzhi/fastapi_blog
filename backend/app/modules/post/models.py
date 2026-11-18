@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
-from sqlalchemy import ForeignKey, Index, String, Text, func
+from sqlalchemy import ForeignKey, Index, String, Text, false, func
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 from app.common.orm import Base, UTCDateTime
@@ -93,6 +93,7 @@ class AdminPostSummary(PostSummary):
 class AdminPostRead(AdminPostSummary):
     body: str
     html: str
+    preview_shared: bool
 
 
 class PostRedirect(BaseModel):
@@ -101,6 +102,10 @@ class PostRedirect(BaseModel):
 
 class PreviewResponse(BaseModel):
     html: str
+
+
+class PreviewSharing(BaseModel):
+    enabled: bool
 
 
 class PostStatistics(BaseModel):
@@ -124,6 +129,7 @@ class PostOrm(Base):
     reading_characters: Mapped[int] = column_property(func.length(plain_text))
     automatic_excerpt: Mapped[str] = column_property(func.substr(plain_text, 1, 220))
     status: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
+    preview_shared: Mapped[bool] = mapped_column(default=False, server_default=false())
     type: Mapped[str] = mapped_column(String(16), default="post", server_default="post")
     feature_image: Mapped[str] = mapped_column(Text, default="", server_default="")
     author: Mapped[str] = mapped_column(String(100), default="xionzhi", server_default="xionzhi")

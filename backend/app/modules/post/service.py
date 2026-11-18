@@ -1,6 +1,7 @@
 """Post queries and edits expressed exclusively through SQLAlchemy ORM models."""
 
 import math
+import re
 import uuid
 from typing import Any
 
@@ -70,6 +71,7 @@ def serialize(record: PostOrm, *, detail: bool = False, admin: bool = False) -> 
         fields["format"] = record.format
         if detail:
             fields["body"] = record.body
+            fields["preview_shared"] = record.preview_shared
     if detail:
         fields["html"] = record.html
     return fields
@@ -153,6 +155,8 @@ def save_post(
     html, plain_text = render(data.body, data.format)
     values = data.model_dump(exclude={"tags", "version", "published_at"})
     values.update(html=html, plain_text=plain_text, updated_at=timestamp, published_at=published)
+    if data.status == "published":
+        values["preview_shared"] = False
     try:
         if previous:
             old_slug = previous.slug
@@ -218,6 +222,28 @@ def get_public(*, db_session: Session, slug: str) -> PostRead | PostRedirect:
             "related": [serialize(item) for item in related],
         }
     )
+
+
+def set_preview_sharing(db_session: Session, post_id: str, *, enabled: bool) -> None:
+    result = db_session.execute(
+        update(PostOrm)
+        .where(PostOrm.id == post_id, PostOrm.status == "draft")
+        .values(preview_shared=enabled)
+    )
+    if result.rowcount != 1:
+        get_post(db_session, post_id)
+        raise ConflictError("Only saved drafts can be shared", code="post.preview_unavailable")
+
+
+def get_shared_preview(db_session: Session, post_id: str) -> PostRead | None:
+    if not re.fullmatch(r"[a-f0-9]{32}", post_id):
+        return None
+    record = db_session.scalar(
+        select(PostOrm).where(
+            PostOrm.id == post_id, PostOrm.status == "draft", PostOrm.preview_shared.is_(True)
+        )
+    )
+    return PostRead.model_validate(serialize(record, detail=True)) if record is not None else None
 
 
 def get_statistics(*, db_session: Session) -> PostStatistics:

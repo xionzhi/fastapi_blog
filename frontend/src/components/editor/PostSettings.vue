@@ -74,8 +74,6 @@ defineEmits<{ manualSlug: [] }>()
         maxlength="200"
       />
     </label>
-    <p class="muted option-note">
-      Pages are available at their own URL and do not appear in the home feed.
-    </p>
+    <slot name="preview-sharing" />
   </aside>
 </template>

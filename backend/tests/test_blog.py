@@ -67,6 +67,27 @@ def test_public_filters_search_pagination_and_seo(admin, post_data):
     assert "draft" not in admin.get("/sitemap.xml").text
 
 
+def test_rss_filters_invalid_xml_characters_without_changing_posts(admin, post_data):
+    title = "中文\x08标题 & 标记 🌱"
+    body = '<p>正文 &amp; 链接</p><img src="/cover.png" alt="任务\x08队列">'
+    created = admin.post(
+        "/api/admin/posts", json={**post_data, "title": title, "body": body, "format": "html"}
+    )
+    assert created.status_code == 201
+    post = created.json()
+    assert "\x08" in post["html"]
+
+    response = admin.get("/rss/")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/rss+xml; charset=utf-8"
+    feed = ElementTree.fromstring(response.content)
+    assert feed.findtext("./channel/item/title") == "中文标题 & 标记 🌱"
+    assert feed.findtext("./channel/item/description") == post["html"].replace("\x08", "")
+
+    saved = admin.get("/api/admin/posts/" + post["id"]).json()
+    assert saved["title"] == title and saved["body"] == body
+
+
 def test_revision_conflict_slug_redirect_and_delete(admin, post_data):
     created = admin.post("/api/admin/posts", json={**post_data, "slug": "\tpython-notes\u3000"})
     assert created.status_code == 201
@@ -127,7 +148,10 @@ def test_tag_edit_and_delete_preserve_associated_posts(admin, post_data):
     assert remaining.status_code == 200
     assert remaining.json()["body"] == post_data["body"]
     assert remaining.json()["tags"] == []
-    assert admin.get("/api/admin/tags").json() == []
+    tags = admin.get("/api/admin/tags")
+    assert tags.json() == []
+    assert tags.headers["cache-control"] == "no-store"
+    assert admin.delete("/api/admin/tags/" + tag["id"]).status_code == 204
 
 
 def test_site_settings_roundtrip_and_invalid_update_are_atomic(admin):

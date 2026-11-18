@@ -4,7 +4,7 @@ import { recordPageView } from '../api/analytics'
 import { session } from '../stores/session'
 
 const STORAGE_KEY = 'blog-daily-visitor'
-const PRIVATE_PATH = /^\/(workspace|admin|api|assets|legacy|content)(\/|$)/
+const PRIVATE_PATH = /^\/(?:(workspace|admin|api|assets|legacy|content)(\/|$)|preview\/[^/])/
 
 function visitorId(): string | undefined {
   const privacy = navigator as Navigator & { globalPrivacyControl?: boolean }

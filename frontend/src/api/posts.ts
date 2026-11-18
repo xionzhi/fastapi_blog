@@ -43,6 +43,8 @@ export const getPosts = (query: PostQuery = {}, signal?: AbortSignal): Promise<P
   api(`/posts?${queryString(query)}`, { signal })
 export const getPost = (slug: string, signal?: AbortSignal): Promise<PostDetail | PostRedirect> =>
   api(`/posts/${encodeURIComponent(slug)}`, { signal })
+export const getDraftPreview = (id: string, signal?: AbortSignal): Promise<PostDetail> =>
+  api(`/preview/${encodeURIComponent(id)}`, { signal, cache: 'no-store' })
 export const getAdminPosts = (query: PostQuery = {}): Promise<Page<AdminPostSummary>> =>
   api(`/admin/posts?${queryString(query)}`)
 export const getAdminPost = (id: string): Promise<AdminPostDetail> => api(`/admin/posts/${id}`)
@@ -54,6 +56,8 @@ export const savePost = (payload: PostInput, id?: string): Promise<AdminPostDeta
   })
 export const deletePost = (id: string): Promise<void> =>
   api(`/admin/posts/${id}`, { method: 'DELETE' })
+export const setDraftPreview = (id: string, enabled: boolean): Promise<{ enabled: boolean }> =>
+  api(`/admin/posts/${id}/preview`, { method: 'PUT', body: JSON.stringify({ enabled }) })
 export const previewPost = (
   body: string,
   format: PostInput['format'],

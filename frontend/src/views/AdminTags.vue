@@ -1,68 +1,40 @@
 <script setup lang="ts">
-import { deleteTag, getAdminTags, saveTag } from '../api/tags'
-
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { Plus, Pencil, Trash2, X } from 'lucide-vue-next'
-import { errorMessage, slugify } from '../utils/format'
-import { notify } from '../stores/notifications'
+import { slugify } from '../utils/format'
 import { useScrollLock } from '../composables/useScrollLock'
 import { useModalFocus } from '../composables/useModalFocus'
-import type { Tag } from '../types'
-const tags = ref<Tag[]>([])
-const editing = ref(false)
+import { useTagManagement } from '../composables/useTagManagement'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+
+const {
+  tags,
+  editing,
+  id,
+  form,
+  busy,
+  loading,
+  pageError,
+  formError,
+  deleteError,
+  deleteTarget,
+  load,
+  edit,
+  closeEditor,
+  save,
+  askToDelete,
+  cancelDelete,
+  remove,
+} = useTagManagement()
 useScrollLock(editing)
-const id = ref('')
-const form = ref({ name: '', slug: '', description: '' })
-const busy = ref(false)
-const error = ref('')
-const loading = ref(true)
 const dialog = ref<HTMLElement>()
-function close(): void {
-  if (!busy.value) editing.value = false
+const newTagButton = ref<HTMLButtonElement>()
+const { keyboard } = useModalFocus(editing, dialog, closeEditor)
+async function confirmDelete(): Promise<void> {
+  if (!(await remove())) return
+  await nextTick()
+  newTagButton.value?.focus({ preventScroll: true })
 }
-const { keyboard } = useModalFocus(editing, dialog, close)
-async function load() {
-  loading.value = true
-  try {
-    tags.value = await getAdminTags()
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    loading.value = false
-  }
-}
-function edit(tag?: Tag) {
-  id.value = tag?.id || ''
-  form.value = { name: tag?.name || '', slug: tag?.slug || '', description: tag?.description || '' }
-  editing.value = true
-  error.value = ''
-}
-async function save() {
-  if (busy.value) return
-  busy.value = true
-  error.value = ''
-  try {
-    await saveTag(form.value, id.value || undefined)
-    editing.value = false
-    await load()
-    notify('Tag saved')
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    busy.value = false
-  }
-}
-async function remove(tag: Tag) {
-  if (!confirm(`Delete tag "${tag.name}"? Posts will be kept.`)) return
-  try {
-    await deleteTag(tag.id)
-    await load()
-    notify('Tag deleted')
-  } catch (e) {
-    error.value = errorMessage(e)
-  }
-}
-load()
 </script>
 <template>
   <div class="admin-page">
@@ -73,7 +45,9 @@ load()
         <p class="muted">Connect your posts through shared ideas.</p>
       </div>
       <button
+        ref="newTagButton"
         class="button-primary"
+        :disabled="busy || loading"
         @click="edit()"
       >
         <Plus :size="17" />
@@ -81,11 +55,18 @@ load()
       </button>
     </header>
     <p
-      v-if="error && !editing"
+      v-if="pageError"
       class="form-error"
       role="alert"
     >
-      {{ error }}
+      {{ pageError }}
+      <button
+        class="text-button"
+        :disabled="busy || loading"
+        @click="load"
+      >
+        Try again
+      </button>
     </p>
     <div
       class="content-panel tag-table public-results"
@@ -102,17 +83,18 @@ load()
         v-for="tag in tags"
         :key="tag.id"
         class="tag-table-row"
-        :inert="loading ? true : undefined"
+        :inert="loading || busy ? true : undefined"
       >
         <div>
           <strong>{{ tag.name }}</strong>
           <small>/tag/{{ tag.slug }}/</small>
         </div>
-        <span>{{ tag.count }} posts</span>
+        <span>{{ tag.count ?? 0 }} {{ tag.count === 1 ? 'post' : 'posts' }}</span>
         <div class="row-actions">
           <button
             class="icon-button"
             :aria-label="`Edit ${tag.name}`"
+            :disabled="busy || loading"
             @click="edit(tag)"
           >
             <Pencil :size="16" />
@@ -120,14 +102,15 @@ load()
           <button
             class="icon-button danger-hover"
             :aria-label="`Delete ${tag.name}`"
-            @click="remove(tag)"
+            :disabled="busy || loading"
+            @click="askToDelete(tag)"
           >
             <Trash2 :size="16" />
           </button>
         </div>
       </div>
       <p
-        v-if="!loading && !error && !tags.length"
+        v-if="!loading && !pageError && !tags.length"
         class="panel-message muted"
       >
         No tags yet. You can also create them while writing.
@@ -136,8 +119,8 @@ load()
     <Teleport to="body">
       <div
         v-if="editing"
-        class="admin-modal-backdrop"
-        @click.self="close"
+        class="admin admin-modal-backdrop"
+        @click.self="closeEditor"
         @keydown="keyboard"
       >
         <section
@@ -146,7 +129,7 @@ load()
           tabindex="-1"
           role="dialog"
           aria-modal="true"
-          aria-label="Edit tag"
+          :aria-label="id ? 'Edit tag' : 'New tag'"
         >
           <header>
             <h2>{{ id ? 'Edit tag' : 'New tag' }}</h2>
@@ -154,7 +137,7 @@ load()
               class="icon-button"
               aria-label="Close"
               :disabled="busy"
-              @click="close"
+              @click="closeEditor"
             >
               <X :size="20" />
             </button>
@@ -164,6 +147,7 @@ load()
               Name
               <input
                 v-model="form.name"
+                :disabled="busy"
                 @input="!id && (form.slug = slugify(form.name))"
                 required
                 maxlength="80"
@@ -173,6 +157,7 @@ load()
               URL
               <input
                 v-model="form.slug"
+                :disabled="busy"
                 required
                 maxlength="200"
               />
@@ -181,16 +166,17 @@ load()
               Description
               <textarea
                 v-model="form.description"
+                :disabled="busy"
                 rows="3"
                 maxlength="1000"
               />
             </label>
             <p
-              v-if="error"
+              v-if="formError"
               class="form-error"
               role="alert"
             >
-              {{ error }}
+              {{ formError }}
             </p>
             <button
               class="button-primary"
@@ -202,5 +188,16 @@ load()
         </section>
       </div>
     </Teleport>
+    <ConfirmDialog
+      v-if="deleteTarget"
+      title="Delete tag?"
+      :item-name="deleteTarget.name"
+      description="This tag will be removed from all posts. Your posts will be kept. This cannot be undone."
+      confirm-label="Delete tag"
+      :busy="busy"
+      :error="deleteError"
+      @cancel="cancelDelete"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

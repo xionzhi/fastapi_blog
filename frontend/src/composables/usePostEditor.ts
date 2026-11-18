@@ -6,7 +6,7 @@ import {
   useRouter,
   type RouteLocationNormalized,
 } from 'vue-router'
-import { getAdminPost, previewPost, savePost, type PostInput } from '../api/posts'
+import { getAdminPost, previewPost, savePost, setDraftPreview, type PostInput } from '../api/posts'
 import { getAdminTags } from '../api/tags'
 import type { LibraryImage } from '../api/media'
 import { imageMarkup } from '../utils/images'
@@ -55,6 +55,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
   const error = ref('')
   const previewError = ref('')
   const previewing = ref(false)
+  const previewShared = ref(false)
   const automaticSlug = ref(true)
   const previewTask = useDebouncedTask(350)
   let loadSequence = 0
@@ -68,6 +69,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     loading.value = true
     ready.value = false
     id.value = ''
+    previewShared.value = false
     baseline.value = ''
     model.value = emptyDraft()
     tagText.value = ''
@@ -84,6 +86,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
       tags.value = availableTags
       automaticSlug.value = !post
       id.value = post?.id ?? ''
+      previewShared.value = post?.preview_shared ?? false
       model.value = post
         ? {
             title: post.title,
@@ -170,6 +173,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
       const post = await savePost(payload, id.value || undefined)
       if (sequence !== loadSequence) return
       id.value = post.id
+      previewShared.value = post.preview_shared
       automaticSlug.value = false
       model.value = {
         ...model.value,
@@ -196,6 +200,26 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
             : 'Draft saved',
       )
       if (!route.params.id) await router.replace(`/workspace/posts/${post.id}`)
+    } catch (cause) {
+      if (sequence === loadSequence) error.value = errorMessage(cause)
+    } finally {
+      busy.value = false
+    }
+  }
+
+  async function setPreviewSharing(enabled: boolean): Promise<void> {
+    const postId = id.value
+    if (busy.value || !ready.value || !postId || route.params.id !== postId) return
+    if (model.value.status !== 'draft') return
+    const sequence = loadSequence
+    busy.value = true
+    error.value = ''
+    try {
+      const sharing = await setDraftPreview(postId, enabled)
+      if (sequence === loadSequence) {
+        previewShared.value = sharing.enabled
+        notify(sharing.enabled ? 'Preview link enabled' : 'Preview link disabled')
+      }
     } catch (cause) {
       if (sequence === loadSequence) error.value = errorMessage(cause)
     } finally {
@@ -267,6 +291,8 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     error,
     previewError,
     previewing,
+    previewShared,
+    setPreviewSharing,
     dirty,
     automaticSlug,
     save,

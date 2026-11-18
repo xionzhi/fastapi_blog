@@ -8,6 +8,7 @@ Originally built for **无情老小儿** · [Live site](https://xionzhi.com/)
 
 - Markdown and HTML editor with previews, drafts, posts, and standalone pages.
 - Tags, content search, archives, RSS, and a sitemap.
+- Shareable previews for saved drafts.
 - Image uploads, code highlighting, and an image lightbox.
 - Image library with search, reusable editor selections, safe path changes, and usage-aware deletion.
 - Customizable site information, navigation, and cover images.
@@ -134,6 +135,8 @@ Use [.env.example](.env.example) for development and [.env.production.example](.
 - **Changes:** After editing production environment variables, run `docker compose up -d --wait` to recreate the container with the new configuration.
 
 ## Content and backups
+
+Save a draft, then use **Share draft preview** in its post settings to enable and copy a preview link. Anyone with the link can read the latest saved draft. Disable the link to stop sharing. Publishing also disables it. Draft links are omitted from public listings, feeds, and the sitemap.
 
 Use **Images** in the workspace to browse existing files, upload images, copy URLs or Markdown, and rename or move files within the image directory. Path changes update saved article and site references; affected articles receive a new version so stale editor tabs cannot overwrite the update. External links and unsaved edits are not rewritten. Deletion is blocked while saved content uses an image. Images remain regular files in the existing data directory; no separate asset database is required.
 

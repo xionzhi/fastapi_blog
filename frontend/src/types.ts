@@ -58,6 +58,7 @@ export interface AdminPostSummary extends PostSummary {
 export interface AdminPostDetail extends AdminPostSummary {
   body: string
   html: string
+  preview_shared: boolean
 }
 
 export interface PostRedirect {

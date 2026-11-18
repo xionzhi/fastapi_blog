@@ -10,7 +10,7 @@ from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import Settings
-from app.core.paths import WORKSPACE_PATH, is_workspace_path
+from app.core.paths import WORKSPACE_PATH, is_preview_path, is_workspace_path
 
 logger = logging.getLogger("blog.http")
 
@@ -52,16 +52,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         if self.settings.is_production:
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
-        if request.url.path.startswith(("/api/admin", "/api/auth")) or is_workspace_path(
-            request.url.path
-        ):
+        path = request.url.path
+        workspace = is_workspace_path(path)
+        preview = is_preview_path(path) or path.startswith("/api/preview/")
+        if workspace or preview or path.startswith(("/api/admin", "/api/auth")):
             response.headers["Cache-Control"] = "no-store"
             response.headers["X-Robots-Tag"] = "noindex, nofollow"
-        if request.url.path == f"{WORKSPACE_PATH}/reset-password":
+        if preview or path == f"{WORKSPACE_PATH}/reset-password":
             response.headers["Referrer-Policy"] = "no-referrer"
         if response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Content-Security-Policy"] = (
-                self.workspace_csp if is_workspace_path(request.url.path) else self.public_csp
+                self.workspace_csp if workspace or preview else self.public_csp
             )
         return response
 

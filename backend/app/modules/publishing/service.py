@@ -14,12 +14,14 @@ from sqlalchemy import select
 from app.common.database import connect, read_settings
 from app.common.models import Page
 from app.core.config import Settings
-from app.core.paths import is_workspace_path
+from app.core.paths import is_preview_path, is_workspace_path
 from app.modules.post.models import PostOrm, PostRead, PostRedirectOrm, PostSummary
-from app.modules.post.service import get_public, list_posts, public_predicate
+from app.modules.post.service import get_public, get_shared_preview, list_posts, public_predicate
 from app.modules.publishing.models import InitialDocument
 from app.modules.publishing.rendering import home_content, home_module_preloads
 from app.modules.site.service import get as get_site
+
+INVALID_XML_CHARACTERS = re.compile(r"[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]")
 
 
 def rss(*, config: Settings) -> Response:
@@ -32,7 +34,7 @@ def rss(*, config: Settings) -> Response:
             ("link", config.site_url),
             ("description", info["description"]),
         ]:
-            SubElement(channel, key).text = str(value)
+            SubElement(channel, key).text = INVALID_XML_CHARACTERS.sub("", str(value))
         records = session.scalars(
             select(PostOrm)
             .where(PostOrm.type == "post", public_predicate())
@@ -49,9 +51,10 @@ def rss(*, config: Settings) -> Response:
                 ("description", post.html),
                 ("pubDate", format_datetime(post.published_at)),
             ]:
-                SubElement(item, key).text = str(value)
+                SubElement(item, key).text = INVALID_XML_CHARACTERS.sub("", str(value))
     return Response(
-        tostring(root, encoding="utf-8", xml_declaration=True), media_type="application/rss+xml"
+        tostring(root, encoding="utf-8", xml_declaration=True),
+        media_type="application/rss+xml; charset=utf-8",
     )
 
 
@@ -69,6 +72,7 @@ def sitemap(*, config: Settings) -> Response:
 
 
 def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | RedirectResponse:
+    preview = is_preview_path("/" + path)
     path = unquote(path).strip("/")
     status = 200
     canonical = config.site_url + ("/" + quote(path, safe="/") if path else "") + "/"
@@ -80,7 +84,17 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
         home = False
         title, description, image = info["title"], info["description"], info["cover"]
         content = f"<h1>{escape(title)}</h1>"
-        if is_workspace_path("/" + path):
+        if preview:
+            initial.post = get_shared_preview(session, path.partition("/")[2])
+            title = "Draft preview · " + info["title"]
+            if initial.post is None:
+                status, content = 404, "<h1>This preview is unavailable</h1>"
+            else:
+                content = (
+                    f"<article><p>Draft preview</p><h1>{escape(initial.post.title)}</h1>"
+                    f"{initial.post.html}</article>"
+                )
+        elif is_workspace_path("/" + path):
             content, title = "", "Content management"
         elif path in ("", "archive", "tags") or re.fullmatch(
             r"(page/\d+|tag/[^/]+(?:/page/\d+)?|author/[^/]+(?:/page/\d+)?)", path
@@ -133,24 +147,25 @@ def seo_page(config: Settings, index: Path, path: str) -> HTMLResponse | Redirec
                     )
         document.title.string = title
         for node in document.select(
-            'meta[name="description"],link[rel="canonical"],meta[property^="og:"]'
+            'meta[name="description"],link[rel="canonical"],meta[property^="og:"],meta[name="robots"]'
         ):
             node.decompose()
-        document.head.append(
-            document.new_tag("meta", attrs={"name": "description", "content": description})
-        )
-        document.head.append(document.new_tag("link", rel="canonical", href=canonical))
-        for key, value in {
-            "title": title,
-            "description": description,
-            "url": canonical,
-            "image": url_absolute(config.site_url, image),
-            "type": "article" if is_article_path(path) else "website",
-        }.items():
+        if not preview:
             document.head.append(
-                document.new_tag("meta", attrs={"property": "og:" + key, "content": value})
+                document.new_tag("meta", attrs={"name": "description", "content": description})
             )
-        if is_workspace_path("/" + path):
+            document.head.append(document.new_tag("link", rel="canonical", href=canonical))
+            for key, value in {
+                "title": title,
+                "description": description,
+                "url": canonical,
+                "image": url_absolute(config.site_url, image),
+                "type": "article" if is_article_path(path) else "website",
+            }.items():
+                document.head.append(
+                    document.new_tag("meta", attrs={"property": "og:" + key, "content": value})
+                )
+        if preview or is_workspace_path("/" + path):
             document.head.append(
                 document.new_tag("meta", attrs={"name": "robots", "content": "noindex,nofollow"})
             )

@@ -80,15 +80,20 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
         credentials: 'same-origin',
         signal: controller.signal,
       })
-      const stream = original.body?.pipeThrough(
-        new TransformStream<Uint8Array, Uint8Array>({
-          transform(chunk, output) {
-            clearTimeout(timer)
-            timer = setTimeout(() => controller.abort(), 20000)
-            output.enqueue(chunk)
-          },
-        }),
-      )
+      // Some browser transports expose an empty stream even for bodyless statuses.
+      const bodyless = options.method === 'HEAD' || [204, 205, 304].includes(original.status)
+      if (bodyless) await original.body?.cancel().catch(() => {})
+      const stream = bodyless
+        ? null
+        : original.body?.pipeThrough(
+            new TransformStream<Uint8Array, Uint8Array>({
+              transform(chunk, output) {
+                clearTimeout(timer)
+                timer = setTimeout(() => controller.abort(), 20000)
+                output.enqueue(chunk)
+              },
+            }),
+          )
       const response = new Response(stream ?? null, {
         status: original.status,
         statusText: original.statusText,
@@ -104,7 +109,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
             record(body) && typeof body.error_code === 'string' ? body.error_code : undefined
           throw new ApiError(resolveErrorMessage(body, response.status), response.status, code)
         }
-        return response.status === 204 ? (undefined as T) : ((await response.json()) as T)
+        return bodyless ? (undefined as T) : ((await response.json()) as T)
       }
     } catch (cause) {
       if (options.signal?.aborted) throw options.signal.reason

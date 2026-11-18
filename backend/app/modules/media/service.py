@@ -1,7 +1,6 @@
 """Image uploads, library queries, and usage-aware filesystem operations."""
 
 import hashlib
-import io
 import logging
 import math
 import os
@@ -11,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlencode
 
-from PIL import Image, UnidentifiedImageError
+from PIL import UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from app.common.database import begin_write
@@ -27,9 +26,9 @@ from app.modules.media.models import (
     UploadedImage,
 )
 from app.modules.media.references import find_usages, image_url, reference_key, update_references
+from app.modules.media.validation import image_format
 
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
-MAX_IMAGE_PIXELS = 40_000_000
 SUPPORTED_FORMATS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp", "GIF": "gif"}
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 logger = logging.getLogger("blog.media")
@@ -41,14 +40,10 @@ def save_image(*, settings: Settings, content: bytes) -> UploadedImage:
             "Images must not exceed 20 MB", code="media.too_large", status_code=413
         )
     try:
-        with Image.open(io.BytesIO(content), formats=list(SUPPORTED_FORMATS)) as image:
-            extension = SUPPORTED_FORMATS.get(image.format or "")
-            if not extension or image.width * image.height > MAX_IMAGE_PIXELS:
-                raise ValueError("Unsupported image")
-            image.verify()
-    except (UnidentifiedImageError, ValueError, OSError, Image.DecompressionBombError) as exc:
+        extension = SUPPORTED_FORMATS[image_format(content)]
+    except UnidentifiedImageError as exc:
         raise ApplicationError(
-            "Choose a valid PNG, JPEG, WebP, or GIF image (up to 40 megapixels)",
+            "Choose a valid PNG, JPEG, WebP, or GIF image",
             code="media.invalid_image",
             status_code=422,
         ) from exc

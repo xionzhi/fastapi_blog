@@ -16,10 +16,9 @@ defineEmits<{ manualSlug: [] }>()
       <span class="input-prefix">
         /
         <input
-          v-model="model.slug"
+          v-model.trim="model.slug"
           @input="$emit('manualSlug')"
           placeholder="article-slug"
-          maxlength="200"
         />
       </span>
     </label>

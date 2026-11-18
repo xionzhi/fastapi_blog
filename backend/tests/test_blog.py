@@ -68,10 +68,13 @@ def test_public_filters_search_pagination_and_seo(admin, post_data):
 
 
 def test_revision_conflict_slug_redirect_and_delete(admin, post_data):
-    p = admin.post("/api/admin/posts", json=post_data).json()
+    created = admin.post("/api/admin/posts", json={**post_data, "slug": "\tpython-notes\u3000"})
+    assert created.status_code == 201
+    p = created.json()
+    assert p["slug"] == "python-notes"
     assert p["excerpt"] == ""  # Keep automatic excerpts editable as an empty field.
     assert admin.post("/api/admin/posts", json=post_data).status_code == 409
-    update = {**post_data, "slug": "renamed", "version": p["version"]}
+    update = {**post_data, "slug": " renamed ", "version": p["version"]}
     changed = admin.put("/api/admin/posts/" + p["id"], json=update)
     assert changed.status_code == 200
     assert admin.put("/api/admin/posts/" + p["id"], json=update).status_code == 409
@@ -96,7 +99,7 @@ def test_html_sanitization_and_safe_urls(admin, post_data):
         ).status_code
         == 422
     )
-    assert admin.post("/api/admin/posts", json={**post_data, "slug": "admin"}).status_code == 422
+    assert admin.post("/api/admin/posts", json={**post_data, "slug": " admin "}).status_code == 422
 
 
 def test_custom_tag_slug_survives_article_save(admin, post_data):
@@ -202,17 +205,30 @@ def test_upload_validation(admin):
     )
     assert result.status_code == 201 and result.json()["url"].endswith(".png")
     assert admin.get(result.json()["url"]).headers["content-type"] == "image/png"
+    oversized = admin.post(
+        "/api/admin/images",
+        files={"file": ("large.jpg", bytes(20 * 1024 * 1024 + 1), "image/jpeg")},
+    )
+    assert oversized.status_code == 413
+    assert oversized.json()["error_code"] == "media.too_large"
 
 
-def test_upload_accepts_supported_codecs_and_rejects_tiff(admin):
+def test_upload_accepts_supported_codecs_and_rejects_tiff(admin, monkeypatch):
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 16)
     for format, media_type in (
         ("JPEG", "image/jpeg"),
+        ("PNG", "image/png"),
         ("WEBP", "image/webp"),
         ("GIF", "image/gif"),
         ("TIFF", "image/tiff"),
     ):
         image = io.BytesIO()
-        Image.new("RGB", (8, 8), "red").save(image, format=format)
+        frames = (
+            {"save_all": True, "append_images": [Image.new("RGB", (8, 8), "blue")]}
+            if format in {"GIF", "WEBP"}
+            else {}
+        )
+        Image.new("RGB", (8, 8), "red").save(image, format=format, **frames)
         response = admin.post(
             "/api/admin/images", files={"file": ("image", image.getvalue(), media_type)}
         )
@@ -220,4 +236,21 @@ def test_upload_accepts_supported_codecs_and_rejects_tiff(admin):
             assert response.status_code == 422
         else:
             assert response.status_code == 201
-            assert admin.get(response.json()["url"]).headers["content-type"] == media_type
+            original = admin.get(response.json()["url"])
+            assert original.headers["content-type"] == media_type
+            assert original.content == image.getvalue()
+
+
+def test_upload_large_jpeg_preserves_original_and_can_generate_preview(admin):
+    image = io.BytesIO()
+    Image.new("L", (8000, 6000), 128).save(image, format="JPEG")
+    content = image.getvalue()
+    response = admin.post("/api/admin/images", files={"file": ("large.jpg", content, "image/jpeg")})
+    assert response.status_code == 201
+    url = response.json()["url"]
+    assert admin.get(url).content == content
+    preview = admin.get(
+        "/api/admin/images/thumbnail", params={"path": url.removeprefix("/content/images/")}
+    )
+    assert preview.status_code == 200
+    assert preview.headers["content-type"] == "image/webp"

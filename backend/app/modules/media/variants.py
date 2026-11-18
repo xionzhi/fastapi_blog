@@ -3,7 +3,8 @@
 import hashlib
 import os
 import uuid
-from contextlib import suppress
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from threading import BoundedSemaphore
 from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
@@ -12,13 +13,35 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import Settings
 from app.modules.media.models import ImageRead
-from app.modules.media.service import MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS, SUPPORTED_FORMATS
+from app.modules.media.service import MAX_IMAGE_BYTES, SUPPORTED_FORMATS
+from app.modules.media.validation import valid_gif, webp_canvas_size
 
 WIDTHS = (48, 96)
 LIBRARY_WIDTH = 480
+MAX_SOURCE_PIXELS = 40_000_000
 MAX_DECODE_PIXELS = 12_000_000
 ENCODERS = BoundedSemaphore(1)
 IMAGE_ERRORS = (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError)
+
+
+@contextmanager
+def open_source(path: Path) -> Iterator[Image.Image]:
+    with path.open("rb") as stream:
+        header = stream.read(32)
+        stream.seek(0)
+        if header.startswith((b"GIF87a", b"GIF89a")):
+            content = stream.read(MAX_IMAGE_BYTES + 1)
+            if len(content) > MAX_IMAGE_BYTES or not valid_gif(
+                content, max_pixels=MAX_SOURCE_PIXELS
+            ):
+                raise ValueError("GIF exceeds the preview budget or is invalid")
+            stream.seek(0)
+        elif header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+            size = webp_canvas_size(header)
+            if size is None or size[0] * size[1] > MAX_SOURCE_PIXELS:
+                raise ValueError("WebP exceeds the preview budget or is invalid")
+        with Image.open(stream, formats=list(SUPPORTED_FORMATS)) as image:
+            yield image
 
 
 def revision(path: Path) -> str:
@@ -36,9 +59,11 @@ def describe(settings: Settings, url: str, role: str) -> ImageRead | None:
             return None
         if path.stat().st_size > MAX_IMAGE_BYTES:
             return None
-        with Image.open(path, formats=list(SUPPORTED_FORMATS)) as image:
+        with open_source(path) as image:
             width, height = image.size
-            if width * height > MAX_IMAGE_PIXELS or getattr(image, "is_animated", False):
+            if (image.format != "JPEG" and width * height > MAX_SOURCE_PIXELS) or getattr(
+                image, "is_animated", False
+            ):
                 return None
             if image.getexif().get(274) in (5, 6, 7, 8):
                 width, height = height, width
@@ -79,10 +104,8 @@ def variant(
         if target.is_file():
             return target, version
         temporary = cache / f"{key}-{uuid.uuid4().hex}.tmp"
-        with ENCODERS, Image.open(source, formats=list(SUPPORTED_FORMATS)) as image:
-            if image.width * image.height > MAX_IMAGE_PIXELS or (
-                getattr(image, "is_animated", False) and not preview
-            ):
+        with ENCODERS, open_source(source) as image:
+            if getattr(image, "is_animated", False) and not preview:
                 return None
             # JPEG draft decoding reduces memory before loading full-resolution pixels.
             image.draft("RGB", (width, width))
@@ -90,7 +113,7 @@ def variant(
                 return None
             ImageOps.exif_transpose(image, in_place=True)
             image.thumbnail(
-                (width, width if preview else MAX_IMAGE_PIXELS), Image.Resampling.LANCZOS
+                (width, width if preview else MAX_SOURCE_PIXELS), Image.Resampling.LANCZOS
             )
             if image.mode not in ("RGB", "RGBA"):
                 image = image.convert("RGBA" if "transparency" in image.info else "RGB")

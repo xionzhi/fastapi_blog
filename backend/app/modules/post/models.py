@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from sqlalchemy import ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class PostInput(BaseModel):
     title: str = Field(min_length=1, max_length=300)
-    slug: str = Field(min_length=1, max_length=200)
+    slug: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
     body: str = Field(default="", max_length=2_000_000)
     format: Literal["markdown", "html"] = "markdown"
     excerpt: str = Field(default="", max_length=1000)

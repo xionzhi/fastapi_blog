@@ -157,7 +157,7 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
       const submitted = {
         ...model.value,
         status,
-        slug: model.value.slug || slugify(model.value.title),
+        slug: originalSlug.trim() || slugify(model.value.title),
       }
       const submittedTagText = tagText.value
       const payload: PostInput = {

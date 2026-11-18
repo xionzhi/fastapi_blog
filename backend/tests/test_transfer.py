@@ -140,6 +140,7 @@ def test_different_tag_ids_with_identical_slug_reuse_target_tag(admin):
 def test_relative_files_are_resolved_in_target_storage_and_checked(admin):
     data = native_data()
     content = b"image fixture"
+    data["posts"][0]["feature_image"] = "/content/images/file/cover.webp"
     data["files"] = [
         {
             "path": "data/dev/images/file/cover.webp",
@@ -149,24 +150,70 @@ def test_relative_files_are_resolved_in_target_storage_and_checked(admin):
     ]
     checked = preview(admin, data).json()
     assert checked["missing_files"] == [data["files"][0]["path"]]
-    assert apply(admin, data).status_code == 409
+    assert checked["can_import"]
     target = admin.app.state.settings.images / "file" / "cover.webp"
     target.parent.mkdir(parents=True)
     target.write_bytes(b"different image")
     checked = preview(admin, data).json()
     assert checked["changed_files"] and not checked["can_import"]
-    assert apply(admin, data, allow_missing_files=True).status_code == 409
+    assert apply(admin, data).status_code == 409
     target.write_bytes(content)
     assert preview(admin, data).json()["missing_files"] == []
     assert apply(admin, data).status_code == 200
     assert target.read_bytes() == content
+    assert admin.get("/api/posts/native-article").json()["feature_image"] == (
+        "/content/images/file/cover.webp"
+    )
 
 
-def test_missing_files_require_explicit_acknowledgement(admin):
+@pytest.mark.parametrize(
+    ("article_format", "body"),
+    [
+        (
+            "markdown",
+            "Before ![Diagram][missing] and ![External](https://example.org/chart.png) after.\n\n"
+            "```markdown\n![Literal](/content/images/literal.png)\n```\n\n"
+            '[missing]: /content/images/diagram.png "Caption"',
+        ),
+        (
+            "html",
+            '<p>Before <a href="/content/images/diagram.png">'
+            '<img src="/content/images/diagram.png" alt="Diagram"></a> and '
+            '<img src="https://example.org/chart.png" alt="External"> after.</p>'
+            "<pre>![Literal](/content/images/literal.png)</pre>",
+        ),
+    ],
+)
+def test_import_degrades_missing_images_and_ignores_unused_files(admin, article_format, body):
     data = native_data()
-    data["files"] = [{"path": "data/dev/images/missing.png", "size": 10, "sha256": "0" * 64}]
-    assert apply(admin, data).status_code == 409
-    assert apply(admin, data, allow_missing_files=True).status_code == 200
+    data["posts"][0].update(
+        body=body, format=article_format, feature_image="/content/images/cover.png"
+    )
+    data["site"]["cover"] = "/content/images/home.png"
+    images = admin.app.state.settings.images
+    unused = images / "unused.png"
+    unused.write_bytes(b"keep this local file")
+    data["files"] = [
+        {"path": f"data/dev/images/{name}", "size": 10, "sha256": "0" * 64}
+        for name in ("cover.png", "unused.png", "unused-missing.png")
+    ]
+    checked = preview(admin, data).json()
+    assert checked["can_import"]
+    assert checked["missing_files"] == [
+        f"data/dev/images/{name}" for name in ("cover.png", "diagram.png", "home.png")
+    ]
+    assert checked["ignored_files"] == 2 and not checked["changed_files"]
+    assert apply(admin, data, include_settings=True).status_code == 200
+    saved = admin.get("/api/admin/posts/" + data["posts"][0]["id"]).json()
+    assert saved["feature_image"] == ""
+    assert saved["body"] == body
+    assert '<span class="missing-image">Image unavailable: Diagram</span>' in saved["html"]
+    assert 'src="https://example.org/chart.png"' in saved["html"]
+    assert "![Literal](/content/images/literal.png)" in saved["html"]
+    assert 'href="/content/images/diagram.png"' not in saved["html"]
+    assert admin.get("/api/site").json()["cover"] == ""
+    assert apply(admin, data).json()["skipped_posts"] == 1
+    assert unused.read_bytes() == b"keep this local file"
 
 
 @pytest.mark.parametrize(
@@ -243,6 +290,10 @@ def test_export_contains_relative_paths_and_integrity_metadata(admin, monkeypatc
     monkeypatch.setattr(service, "PROJECT_ROOT", settings.data_dir.parent)
     image = settings.images / "example.png"
     image.write_bytes(b"content")
+    (settings.images / "unused.png").write_bytes(b"unused")
+    source = native_data()
+    source["posts"][0]["body"] += "\n\n![Example](/content/images/example.png)"
+    assert apply(admin, source).status_code == 200
     data = admin.get("/api/admin/data/export").json()
     assert data["files"] == [
         {

@@ -3,8 +3,22 @@ import { onMounted, ref, watch, type Ref } from 'vue'
 /** Enhance article HTML without changing stored content or linked-image navigation. */
 export function useArticleImages(root: Ref<HTMLElement | undefined>, content: () => string) {
   const image = ref<{ src: string; alt: string } | null>(null)
+  function replaceBrokenImage(element: HTMLImageElement): void {
+    const replacement = document.createElement('span')
+    replacement.className = 'missing-image'
+    const alt = element.alt.trim()
+    replacement.textContent = alt ? `Image unavailable: ${alt}` : 'Image unavailable'
+    element.replaceWith(replacement)
+  }
+  function onImageError(event: Event): void {
+    if (event.target instanceof HTMLImageElement) replaceBrokenImage(event.target)
+  }
   function enhance(): void {
     for (const element of root.value?.querySelectorAll('img') ?? []) {
+      if (element.complete && !element.naturalWidth && element.getAttribute('src')) {
+        replaceBrokenImage(element)
+        continue
+      }
       if (element.closest('a')) continue
       element.tabIndex = 0
       element.setAttribute('role', 'button')
@@ -37,5 +51,5 @@ export function useArticleImages(root: Ref<HTMLElement | undefined>, content: ()
     },
     { flush: 'post' },
   )
-  return { image, open, keyboard }
+  return { image, open, keyboard, onImageError }
 }

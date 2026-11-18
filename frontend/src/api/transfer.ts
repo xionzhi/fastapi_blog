@@ -8,6 +8,7 @@ export interface ImportPreview {
   pages: number
   tags: number
   files: number
+  ignored_files: number
   new_posts: number
   skipped_posts: number
   new_tags: number
@@ -36,12 +37,8 @@ export const importData = (
   content: string,
   sha256: string,
   includeSettings: boolean,
-  allowMissingFiles: boolean,
 ): Promise<ImportResult> =>
-  api(
-    `/admin/data/import?${queryString({ sha256, include_settings: includeSettings, allow_missing_files: allowMissingFiles })}`,
-    {
-      method: 'POST',
-      body: content,
-    },
-  )
+  api(`/admin/data/import?${queryString({ sha256, include_settings: includeSettings })}`, {
+    method: 'POST',
+    body: content,
+  })

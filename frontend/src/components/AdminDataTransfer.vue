@@ -11,7 +11,6 @@ const {
   busy,
   canImport,
   includeSettings,
-  allowMissingFiles,
   confirmed,
   download,
   selectFile,
@@ -29,7 +28,7 @@ async function importContent(): Promise<void> {
     <h2>Export and import data</h2>
     <p>
       Export articles, pages, tags, redirects and site settings as JSON. File references are
-      relative to the project root. Copy image files separately.
+      relative to the project root. Copy referenced image files separately.
     </p>
     <p>
       Administrator accounts, passwords, sessions, analytics and SMTP configuration are excluded.
@@ -81,7 +80,7 @@ async function importContent(): Promise<void> {
       <p>
         {{ preview.posts }} posts · {{ preview.pages }}
         {{ preview.pages === 1 ? 'page' : 'pages' }} · {{ preview.tags }} tags ·
-        {{ preview.files }} image files
+        {{ preview.files }} referenced image files
       </p>
       <p>
         {{ preview.new_posts }} new content items · {{ preview.skipped_posts }} identical content
@@ -91,10 +90,15 @@ async function importContent(): Promise<void> {
         v-if="preview.conflicts.length || preview.changed_files.length"
         role="alert"
       >
-        <p>
-          Import blocked: {{ preview.conflicts.length }} content conflicts and
-          {{ preview.changed_files.length }} changed image files. Resolve these and preview the file
-          again.
+        <p v-if="preview.conflicts.length">
+          Import blocked by {{ preview.conflicts.length }}
+          {{ preview.conflicts.length === 1 ? 'content conflict' : 'content conflicts' }}. Resolve
+          the conflicts and preview the file again.
+        </p>
+        <p v-if="preview.changed_files.length">
+          {{ preview.changed_files.length }}
+          {{ preview.changed_files.length === 1 ? 'image differs' : 'images differ' }}
+          from the export. Copy the matching files and preview the import again.
         </p>
         <ul>
           <li
@@ -107,9 +111,10 @@ async function importContent(): Promise<void> {
       </div>
       <div v-if="preview.missing_files.length">
         <p>
-          {{ preview.missing_files.length }} image files are missing on this server. Copy them into
-          the configured images directory, preserving the paths after the exported media root, then
-          preview again.
+          {{ preview.missing_files.length }}
+          {{ preview.missing_files.length === 1 ? 'image file is' : 'image files are' }}
+          missing. New articles will use placeholders for missing inline images and omit missing
+          covers. You can copy these files before importing to keep the images.
         </p>
         <ul>
           <li
@@ -119,15 +124,11 @@ async function importContent(): Promise<void> {
             {{ path }}
           </li>
         </ul>
-        <label class="transfer-checkbox">
-          <input
-            v-model="allowMissingFiles"
-            type="checkbox"
-            :disabled="busy"
-          />
-          Import even if image files are missing
-        </label>
       </div>
+      <p v-if="preview.ignored_files">
+        {{ preview.ignored_files }} unused
+        {{ preview.ignored_files === 1 ? 'file will' : 'files will' }} be skipped.
+      </p>
       <label class="transfer-checkbox">
         <input
           v-model="includeSettings"

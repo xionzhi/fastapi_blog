@@ -19,19 +19,12 @@ export function useDataTransfer() {
   const error = ref('')
   const activity = ref<'' | 'export' | 'preview' | 'import'>('')
   const includeSettings = ref(false)
-  const allowMissingFiles = ref(false)
   const confirmed = ref(false)
   let content = ''
   let disposed = false
   let request: AbortController | undefined
   const busy = computed(() => Boolean(activity.value))
-  const canImport = computed(
-    () =>
-      !busy.value &&
-      preview.value?.can_import &&
-      confirmed.value &&
-      (!preview.value.missing_files.length || allowMissingFiles.value),
-  )
+  const canImport = computed(() => !busy.value && preview.value?.can_import && confirmed.value)
 
   async function download(): Promise<void> {
     if (busy.value) return
@@ -63,7 +56,6 @@ export function useDataTransfer() {
     preview.value = undefined
     result.value = undefined
     confirmed.value = false
-    allowMissingFiles.value = false
     error.value = ''
     filename.value = file.name
     content = ''
@@ -88,12 +80,7 @@ export function useDataTransfer() {
     activity.value = 'import'
     error.value = ''
     try {
-      result.value = await importData(
-        content,
-        preview.value.sha256,
-        includeSettings.value,
-        allowMissingFiles.value,
-      )
+      result.value = await importData(content, preview.value.sha256, includeSettings.value)
       preview.value = undefined
       confirmed.value = false
       content = ''
@@ -129,7 +116,6 @@ export function useDataTransfer() {
     busy,
     canImport,
     includeSettings,
-    allowMissingFiles,
     confirmed,
     download,
     selectFile,

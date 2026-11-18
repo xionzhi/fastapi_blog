@@ -111,6 +111,7 @@ class ImportPreview(BaseModel):
     pages: int
     tags: int
     files: int
+    ignored_files: int = 0
     new_posts: int = 0
     skipped_posts: int = 0
     new_tags: int = 0

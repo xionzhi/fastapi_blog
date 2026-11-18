@@ -8,7 +8,12 @@ import 'prismjs/themes/prism.css'
 
 const props = defineProps<{ html: string }>()
 const root = ref<HTMLElement>()
-const { image, open: openImage, keyboard: imageKeyboard } = useArticleImages(root, () => props.html)
+const {
+  image,
+  open: openImage,
+  keyboard: imageKeyboard,
+  onImageError,
+} = useArticleImages(root, () => props.html)
 useCodeHighlighting(root, () => props.html)
 async function copy(e: MouseEvent) {
   const pre = (e.target as HTMLElement).closest('pre')
@@ -28,6 +33,7 @@ async function copy(e: MouseEvent) {
     v-html="html"
     @click="openImage"
     @keydown="imageKeyboard"
+    @error.capture="onImageError"
     @dblclick="copy"
   />
   <p

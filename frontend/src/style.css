@@ -671,6 +671,15 @@ h4 {
 .article-body img[aria-haspopup='dialog'] {
   cursor: zoom-in;
 }
+.post-content .missing-image {
+  display: inline-block;
+  padding: 0.35em 0.75em;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
 .article-body p a {
   color: var(--accent);
 }

@@ -31,7 +31,7 @@ def reference_key(path: str) -> str:
     return os.path.normcase(path).replace("\\", "/")
 
 
-def local_path(url: str, settings: Settings) -> str | None:
+def local_path(url: str, settings: Settings, *, normalize_case: bool = True) -> str | None:
     try:
         parsed = urlsplit(html.unescape(url))
         hosts = {urlsplit(origin).netloc.lower() for origin in settings.allowed_origins}
@@ -41,7 +41,10 @@ def local_path(url: str, settings: Settings) -> str | None:
         if parsed.scheme and parsed.scheme not in {"http", "https"}:
             return None
         path = posixpath.normpath(unquote(parsed.path).replace("\\", "/"))
-        return reference_key(path[len(PREFIX) :]) if path.startswith(PREFIX) else None
+        if not path.startswith(PREFIX):
+            return None
+        relative = path[len(PREFIX) :]
+        return reference_key(relative) if normalize_case else relative
     except ValueError:
         return None
 

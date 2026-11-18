@@ -51,14 +51,13 @@ async def preview_data(
 ) -> ImportPreview:
     content = await read_content(request)
     data = await run_in_threadpool(service.parse_content, content)
-    result, _ = await run_in_threadpool(
+    return await run_in_threadpool(
         service.inspect_content,
         session=db_session,
         settings=settings,
         data=data,
         sha256=hashlib.sha256(content).hexdigest(),
     )
-    return result
 
 
 @router.post("/import", response_model=ImportResult)
@@ -68,7 +67,6 @@ async def import_data(
     settings: SettingsDependency,
     sha256: Annotated[str, Query(pattern=r"^[a-f0-9]{64}$")],
     include_settings: bool = False,
-    allow_missing_files: bool = False,
 ) -> ImportResult:
     content = await read_content(request)
     actual = hashlib.sha256(content).hexdigest()
@@ -86,5 +84,4 @@ async def import_data(
         data=data,
         sha256=actual,
         include_settings=include_settings,
-        allow_missing_files=allow_missing_files,
     )

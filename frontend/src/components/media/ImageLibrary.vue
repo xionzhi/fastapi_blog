@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { Copy, Image, RefreshCw, Trash2, Upload, X } from 'lucide-vue-next'
 import type { LibraryImage } from '../../api/media'
 import { useImageLibrary } from '../../composables/useImageLibrary'
@@ -8,6 +8,7 @@ import { useScrollLock } from '../../composables/useScrollLock'
 import { notify } from '../../stores/notifications'
 import { date } from '../../utils/format'
 import { fileSize, imageAlt, imageMarkup } from '../../utils/images'
+import ConfirmDialog from '../ConfirmDialog.vue'
 
 const props = defineProps<{ picker?: boolean }>()
 const emit = defineEmits<{
@@ -21,6 +22,8 @@ const file = ref<HTMLInputElement>()
 const newPath = ref('')
 const failed = ref<Record<string, boolean>>({})
 const dialog = ref<HTMLElement>()
+const refreshButton = ref<HTMLButtonElement>()
+const deleteTarget = ref<LibraryImage>()
 const detailsOpen = computed(() => !!selected.value && !props.picker)
 useScrollLock(detailsOpen)
 function closeDetails(): void {
@@ -48,14 +51,25 @@ async function copy(value: string): Promise<void> {
     notify('Clipboard unavailable. Select and copy the image URL manually.')
   }
 }
-function confirmDelete(image: LibraryImage): void {
-  if (
-    confirm(
-      `Permanently delete "${image.path}"? This cannot be undone. Unsaved edits and external references are not checked.`,
-    )
-  ) {
-    void remove(image)
-  }
+async function confirmDelete(image: LibraryImage): Promise<void> {
+  if (busy.value || loading.value || image.usages.length) return
+  // Restore the current dialog before opening another focus-isolated overlay.
+  selected.value = undefined
+  await nextTick()
+  deleteTarget.value = image
+}
+async function cancelDelete(): Promise<void> {
+  if (busy.value) return
+  const path = deleteTarget.value?.path
+  deleteTarget.value = undefined
+  await nextTick()
+  selected.value = data.value?.items.find((image) => image.path === path)
+}
+async function deleteSelected(): Promise<void> {
+  if (!deleteTarget.value || !(await remove(deleteTarget.value))) return
+  deleteTarget.value = undefined
+  await nextTick()
+  refreshButton.value?.focus({ preventScroll: true })
 }
 </script>
 
@@ -73,6 +87,7 @@ function confirmDelete(image: LibraryImage): void {
         />
       </label>
       <button
+        ref="refreshButton"
         type="button"
         class="button-secondary"
         :disabled="busy || loading"
@@ -314,6 +329,17 @@ function confirmDelete(image: LibraryImage): void {
         </section>
       </div>
     </Teleport>
+    <ConfirmDialog
+      v-if="deleteTarget"
+      title="Delete image?"
+      :item-name="deleteTarget.path"
+      description="This image will be permanently deleted. Unsaved edits and external references are not checked. This cannot be undone."
+      confirm-label="Delete image"
+      :busy="busy"
+      :error="error"
+      @cancel="cancelDelete"
+      @confirm="deleteSelected"
+    />
   </div>
 </template>
 

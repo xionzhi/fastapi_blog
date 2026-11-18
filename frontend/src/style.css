@@ -665,9 +665,11 @@ h4 {
   height: auto;
   left: auto;
   transform: none;
-  cursor: zoom-in;
   margin: 20px auto;
   display: block;
+}
+.article-body img[aria-haspopup='dialog'] {
+  cursor: zoom-in;
 }
 .article-body p a {
   color: var(--accent);
@@ -829,28 +831,6 @@ h4 {
   line-height: 1.9;
   color: var(--muted);
   margin: 0;
-}
-.image-lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 160;
-  background: #10171bef;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 50px;
-  cursor: zoom-out;
-}
-.image-lightbox > button {
-  position: absolute;
-  right: 25px;
-  top: 20px;
-  color: #fff;
-}
-.image-lightbox img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
 }
 .index-page {
   max-width: 850px;
@@ -2152,9 +2132,6 @@ h4 {
   }
   .search-results p {
     font-size: 11px;
-  }
-  .image-lightbox {
-    padding: 25px;
   }
   .admin-sidebar {
     flex-wrap: wrap;

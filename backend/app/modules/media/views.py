@@ -2,13 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, UploadFile, status
+from fastapi import APIRouter, Query, Request, status
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile
 from starlette.responses import FileResponse, Response
 
-from app.common.exceptions import NotFoundError
+from app.common.exceptions import ApplicationError, NotFoundError
 from app.core.dependencies import DbSession, SettingsDependency
-from app.modules.auth.dependencies import get_current_user
 from app.modules.media import service
 from app.modules.media.models import (
     ImageLibrary,
@@ -19,9 +19,7 @@ from app.modules.media.models import (
 )
 from app.modules.media.variants import LIBRARY_WIDTH, variant
 
-router = APIRouter(
-    prefix="/admin/images", tags=["admin media"], dependencies=[Depends(get_current_user)]
-)
+router = APIRouter(prefix="/images", tags=["admin media"])
 
 
 @router.get("", response_model=ImageLibrary)
@@ -61,10 +59,32 @@ def delete_image(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("", response_model=UploadedImage, status_code=status.HTTP_201_CREATED)
-async def upload_image(file: UploadFile, settings: SettingsDependency) -> UploadedImage:
-    try:
+@router.post(
+    "",
+    response_model=UploadedImage,
+    status_code=status.HTTP_201_CREATED,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["file"],
+                        "properties": {"file": {"type": "string", "format": "binary"}},
+                    }
+                }
+            },
+        }
+    },
+)
+async def upload_image(request: Request, settings: SettingsDependency) -> UploadedImage:
+    # Parse multipart only after the administrator dependencies have accepted the request.
+    async with request.form(max_files=1, max_fields=0) as form:
+        file = form.get("file")
+        if not isinstance(file, UploadFile):
+            raise ApplicationError(
+                "Choose an image file", code="media.missing_file", status_code=422
+            )
         content = await file.read(service.MAX_IMAGE_BYTES + 1)
-    finally:
-        await file.close()
     return await run_in_threadpool(service.save_image, settings=settings, content=content)

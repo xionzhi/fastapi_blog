@@ -126,6 +126,19 @@ curl --fail https://blog.example.com/api/health
 
 Production requires HTTPS and secure session cookies. Interactive API documentation is disabled in production. A log rotation example is available in [deploy/logrotate.conf](deploy/logrotate.conf).
 
+### Upgrade an existing deployment
+
+Keep the current container image available for rollback. Build the new image manually, then take a [database backup](#content-and-backups) before starting the new container. Use the same Compose project name as the running service throughout the upgrade.
+
+```bash
+docker compose build blog &&
+  docker compose exec -T blog python -m app.cli backup "/app/data/pre-release-$(date +%Y%m%d-%H%M%S).sqlite3" &&
+  docker compose up -d --no-deps --no-build --wait blog &&
+  curl --fail http://127.0.0.1:8000/api/health
+```
+
+Check the public home page and RSS feed via HTTPS, then sign in to confirm the workspace loads. Alembic upgrades the database on startup. If you need to roll back to an image that predates a database migration, use the corresponding pre-release database backup and account for any writes made since that backup.
+
 ## Configuration
 
 Use [.env.example](.env.example) for development and [.env.production.example](.env.production.example) for deployment. Keep `.env` outside version control.

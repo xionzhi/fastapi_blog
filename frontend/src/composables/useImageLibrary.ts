@@ -1,5 +1,5 @@
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useWorkspaceExitGuard } from './useWorkspaceExitGuard'
 import { deleteImage, getImages, moveImage, uploadImage, type LibraryImage } from '../api/media'
 import { ApiError } from '../api/request'
 import { notify } from '../stores/notifications'
@@ -43,14 +43,14 @@ export function useImageLibrary() {
   onScopeDispose(() => {
     disposed = true
   })
-  onBeforeRouteLeave(() => {
+  useWorkspaceExitGuard(() => {
     if (!busy.value) return true
     notify('Wait for the image operation to finish before leaving.')
     return false
   })
 
-  async function run(action: () => Promise<void>): Promise<void> {
-    if (busy.value || loading.value) return
+  async function run(action: () => Promise<void>): Promise<boolean> {
+    if (busy.value || loading.value) return false
     busy.value = true
     operationError.value = ''
     const previousQuery = query.value
@@ -61,11 +61,13 @@ export function useImageLibrary() {
         if (query.value === previousQuery && page.value === previousPage) await reload()
         else await nextTick() // The resource watcher already reloads changed criteria.
       }
+      return !disposed
     } catch (cause) {
       if (!disposed) {
         operationError.value = errorMessage(cause)
         if (cause instanceof ApiError && [404, 409].includes(cause.status)) await reload()
       }
+      return false
     } finally {
       if (!disposed) busy.value = false
     }
@@ -102,8 +104,8 @@ export function useImageLibrary() {
     })
   }
 
-  async function remove(image: LibraryImage): Promise<void> {
-    await run(async () => {
+  async function remove(image: LibraryImage): Promise<boolean> {
+    return run(async () => {
       await deleteImage(image)
       selected.value = undefined
       notify('Image deleted')

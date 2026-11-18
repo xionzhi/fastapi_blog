@@ -4,7 +4,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, PngImagePlugin, WebPImagePlugin
 
 from app.application import build_application
 from app.core.config import Settings
@@ -50,6 +50,28 @@ def test_thumbnail_decoding_is_bounded_and_jpeg_draft_preserves_original(tmp_pat
         assert preview.width == 96
     assert jpeg.read_bytes() == original
     assert variant(png, tmp_path / "cache", 96) is None
+
+
+def test_cover_dimensions_do_not_decode_pixels_and_keep_exif_orientation(tmp_path, monkeypatch):
+    settings = Settings(data_dir=tmp_path)
+    settings.images.mkdir()
+    image = Image.new("RGB", (40, 60), "blue")
+    image.save(settings.images / "plain.png")
+    exif = Image.Exif()
+    exif[274] = 6
+    for suffix in ("png", "webp", "jpg"):
+        image.save(settings.images / f"rotated.{suffix}", exif=exif)
+
+    def fail_decode(*args, **kwargs):
+        raise AssertionError("Reading cover dimensions must not decode image pixels")
+
+    monkeypatch.setattr(PngImagePlugin.PngImageFile, "load", fail_decode)
+    monkeypatch.setattr(WebPImagePlugin.WebPImageFile, "_open", fail_decode)
+    plain = describe(settings, "/content/images/plain.png", "cover")
+    assert (plain.width, plain.height) == (40, 60)
+    for suffix in ("png", "webp", "jpg"):
+        info = describe(settings, f"/content/images/rotated.{suffix}", "cover")
+        assert (info.width, info.height) == (60, 40)
 
 
 def test_image_requests_handle_cache_ranges_and_bounded_widths(tmp_path):

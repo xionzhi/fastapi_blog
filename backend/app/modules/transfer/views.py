@@ -3,18 +3,15 @@
 import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from app.common.exceptions import ApplicationError
 from app.core.dependencies import DbSession, SettingsDependency
-from app.modules.auth.dependencies import get_current_user
 from app.modules.transfer import service
 from app.modules.transfer.models import MAX_JSON_BYTES, ImportPreview, ImportResult
 
-router = APIRouter(
-    prefix="/admin/data", tags=["admin data"], dependencies=[Depends(get_current_user)]
-)
+router = APIRouter(prefix="/data", tags=["admin data"])
 
 
 async def read_content(request: Request) -> bytes:

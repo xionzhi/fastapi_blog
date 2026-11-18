@@ -2,17 +2,17 @@
 
 import re
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Query, Request, Response
 
 from app.common.exceptions import AuthenticationError
 from app.core.dependencies import DbSession, SettingsDependency
 from app.core.security import check_origin, session_cookie_name
 from app.modules.analytics import service
 from app.modules.analytics.models import PageViewInput, TrafficOverview
-from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.service import get_session_user
 
 router = APIRouter(tags=["analytics"])
+admin_router = APIRouter(prefix="/analytics", tags=["admin analytics"])
 BOT = re.compile(
     r"bot|spider|crawl|slurp|headless|curl|wget|python|httpclient|scrapy|scanner|monitor|uptime|preview",
     re.IGNORECASE,
@@ -45,9 +45,7 @@ def collect_page_view(
     return Response(status_code=204)
 
 
-@router.get(
-    "/admin/analytics", response_model=TrafficOverview, dependencies=[Depends(get_current_user)]
-)
+@admin_router.get("", response_model=TrafficOverview)
 def get_traffic_overview(
     settings: SettingsDependency,
     db_session: DbSession,

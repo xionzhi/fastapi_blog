@@ -1,11 +1,10 @@
 """Explicit, typed route declarations for public and administrator posts."""
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.common.exceptions import NotFoundError
 from app.common.models import Page
 from app.core.dependencies import DbSession
-from app.modules.auth.dependencies import get_current_user
 from app.modules.post import service
 from app.modules.post.content import render
 from app.modules.post.models import (
@@ -22,9 +21,7 @@ from app.modules.post.models import (
 )
 
 router = APIRouter(tags=["posts"])
-admin_router = APIRouter(
-    prefix="/admin", tags=["admin posts"], dependencies=[Depends(get_current_user)]
-)
+admin_router = APIRouter(tags=["admin posts"])
 
 
 @router.get("/posts", response_model=Page[PostSummary])

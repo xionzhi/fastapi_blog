@@ -7,7 +7,7 @@ export interface TagInput {
   description: string
 }
 
-export const getPublicTags = (): Promise<Tag[]> => api('/tags')
+export const getPublicTags = (signal?: AbortSignal): Promise<Tag[]> => api('/tags', { signal })
 export const getAdminTags = (signal?: AbortSignal): Promise<Tag[]> =>
   api('/admin/tags', { signal, cache: 'no-store' })
 export const saveTag = (payload: TagInput, id?: string): Promise<Tag> =>

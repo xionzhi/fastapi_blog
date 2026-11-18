@@ -25,6 +25,8 @@ class ImageStaticFiles(StaticFiles):
         self.cache = cache
 
     async def get_response(self, path: str, scope: Scope) -> Response:
+        if PurePosixPath(path).suffix.lower() not in IMAGE_MEDIA_TYPES:
+            return Response("Not found", status_code=404)
         query = QueryParams(scope.get("query_string", b""))
         if "width" in query:
             if query["width"] not in {str(width) for width in WIDTHS}:

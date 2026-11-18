@@ -1,57 +1,8 @@
 <script setup lang="ts">
-import { checkResetToken, resetPassword } from '../api/auth'
-import { clearSession } from '../stores/session'
-
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, KeyRound, CheckCircle } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
 import { site } from '../stores/site'
-const route = useRoute()
-const router = useRouter()
-const token = new URLSearchParams(route.hash.slice(1)).get('token') || ''
-const valid = ref(false)
-const checking = ref(true)
-const password = ref('')
-const confirmation = ref('')
-const busy = ref(false)
-const error = ref('')
-const message = ref('')
-// Remove the one-time credential from visible history as soon as it is captured.
-if (route.hash) router.replace({ path: '/workspace/reset-password', hash: '' })
-async function check() {
-  try {
-    await checkResetToken(token)
-    valid.value = true
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    checking.value = false
-  }
-}
-if (token) check()
-else {
-  checking.value = false
-  error.value = 'This reset link is missing or invalid. Please request a new one.'
-}
-async function submit() {
-  if (password.value !== confirmation.value) {
-    error.value = 'Passwords do not match.'
-    return
-  }
-  busy.value = true
-  error.value = ''
-  try {
-    message.value = (await resetPassword(token, password.value)).message
-    password.value = ''
-    confirmation.value = ''
-    clearSession()
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    busy.value = false
-  }
-}
+import { usePasswordReset } from '../composables/usePasswordReset'
+const { valid, checking, password, confirmation, busy, error, message, submit } = usePasswordReset()
 </script>
 <template>
   <main

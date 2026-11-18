@@ -1,5 +1,5 @@
 import { computed, nextTick, onScopeDispose, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useWorkspaceExitGuard } from './useWorkspaceExitGuard'
 import { getMailStatus, sendTestEmail, updateRecoveryEmail } from '../api/mail'
 import { notify } from '../stores/notifications'
 import { errorMessage } from '../utils/format'
@@ -81,7 +81,7 @@ export function useAdminMail() {
     }
   }
 
-  onBeforeRouteLeave(() => {
+  useWorkspaceExitGuard(() => {
     if (!activity.value) return true
     notify('Wait for the email operation to finish before leaving this page.')
     return false

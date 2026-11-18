@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import { signOut } from '../api/auth'
-import { clearSession } from '../stores/session'
-
-import { useRouter } from 'vue-router'
 import {
   FileText,
   Tags,
@@ -13,24 +9,17 @@ import {
   PenLine,
   BarChart3,
 } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
-import { notify } from '../stores/notifications'
+import { useSignOut } from '../composables/useSignOut'
 import { session } from '../stores/session'
 import { site } from '../stores/site'
-const router = useRouter()
-async function logout() {
-  try {
-    await signOut()
-    clearSession()
-    await router.push('/workspace/login')
-  } catch (e) {
-    notify(errorMessage(e))
-  }
-}
+const { busy, logout } = useSignOut()
 </script>
 <template>
   <div class="admin admin-shell">
-    <aside class="admin-sidebar">
+    <aside
+      class="admin-sidebar"
+      :inert="busy ? true : undefined"
+    >
       <RouterLink
         class="admin-brand"
         to="/workspace/posts"
@@ -71,9 +60,12 @@ async function logout() {
           <ExternalLink :size="16" />
           View blog
         </a>
-        <button @click="logout">
+        <button
+          :disabled="busy"
+          @click="logout"
+        >
           <LogOut :size="16" />
-          Sign out
+          {{ busy ? 'Signing out…' : 'Sign out' }}
           <span>{{ session.username }}</span>
         </button>
       </div>
@@ -81,6 +73,7 @@ async function logout() {
     <main
       id="main-content"
       class="admin-main"
+      :inert="busy ? true : undefined"
     >
       <RouterView />
     </main>

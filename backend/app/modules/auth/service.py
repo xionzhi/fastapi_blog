@@ -1,5 +1,6 @@
 """Administrator authentication and sessions with mapped persistence."""
 
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -33,6 +34,8 @@ class AuthenticatedSession:
 
 
 def get_session_user(*, db_session: Session, token: str) -> CurrentUser:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{64}", token):
+        raise AuthenticationError()
     user = db_session.scalar(
         select(UserOrm)
         .join(SessionOrm, SessionOrm.user_id == UserOrm.id)

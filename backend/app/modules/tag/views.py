@@ -1,16 +1,13 @@
 """Public tag collections and protected administrator tag operations."""
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Response, status
 
 from app.core.dependencies import DbSession
-from app.modules.auth.dependencies import get_current_user
 from app.modules.tag import service
 from app.modules.tag.models import TagInput, TagRead
 
 router = APIRouter(tags=["tags"])
-admin_router = APIRouter(
-    prefix="/admin/tags", tags=["admin tags"], dependencies=[Depends(get_current_user)]
-)
+admin_router = APIRouter(prefix="/tags", tags=["admin tags"])
 
 
 @router.get("/tags", response_model=list[TagRead], response_model_exclude_none=True)

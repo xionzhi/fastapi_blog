@@ -27,9 +27,11 @@ export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined
   })
 
   const openMenu = (): void => {
+    searching.value = false
     menu.value = true
   }
   const openSearch = (): void => {
+    menu.value = false
     searching.value = true
   }
   function keyboard(event: KeyboardEvent): void {
@@ -39,6 +41,7 @@ export function useBlogNavigation(closeButton: Ref<HTMLButtonElement | undefined
     }
     if ((event.ctrlKey || event.metaKey) && event.key === 'k' && !admin.value) {
       event.preventDefault()
+      menu.value = false
       searching.value = !searching.value
     }
   }

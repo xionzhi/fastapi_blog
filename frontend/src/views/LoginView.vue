@@ -1,43 +1,8 @@
 <script setup lang="ts">
-import { signIn, getRecoveryStatus } from '../api/auth'
-import { applySession } from '../stores/session'
-
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowRight, PenLine } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
 import { site } from '../stores/site'
-const username = ref('')
-const password = ref('')
-const busy = ref(false)
-const error = ref('')
-const recoveryEnabled = ref(false)
-getRecoveryStatus()
-  .then((r) => (recoveryEnabled.value = r.enabled))
-  .catch(() => {})
-const route = useRoute()
-const router = useRouter()
-async function login() {
-  busy.value = true
-  error.value = ''
-  try {
-    const user = await signIn({ username: username.value, password: password.value })
-    applySession(user)
-    password.value = ''
-    const next =
-      typeof route.query.next === 'string' &&
-      route.query.next.startsWith('/workspace/') &&
-      route.query.next !== '/workspace/login'
-        ? route.query.next
-        : '/workspace/posts'
-    await router.push(next)
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    busy.value = false
-  }
-}
-document.title = `Sign in · ${site.value.title}`
+import { useSignIn } from '../composables/useSignIn'
+const { username, password, busy, error, recoveryEnabled, login } = useSignIn()
 </script>
 <template>
   <main

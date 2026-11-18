@@ -1,31 +1,8 @@
 <script setup lang="ts">
-import { getRecoveryStatus, requestReset } from '../api/auth'
-
-import { ref } from 'vue'
 import { ArrowLeft, ArrowRight, Mail, CheckCircle } from 'lucide-vue-next'
-import { errorMessage } from '../utils/format'
 import { site } from '../stores/site'
-const identifier = ref('')
-const enabled = ref(false)
-const checking = ref(true)
-const busy = ref(false)
-const message = ref('')
-const error = ref('')
-getRecoveryStatus()
-  .then((r) => (enabled.value = r.enabled))
-  .catch((e) => (error.value = errorMessage(e)))
-  .finally(() => (checking.value = false))
-async function submit() {
-  busy.value = true
-  error.value = ''
-  try {
-    message.value = (await requestReset(identifier.value)).message
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    busy.value = false
-  }
-}
+import { usePasswordRecovery } from '../composables/usePasswordRecovery'
+const { identifier, enabled, checking, busy, message, error, submit } = usePasswordRecovery()
 </script>
 <template>
   <main

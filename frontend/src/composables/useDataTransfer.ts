@@ -1,5 +1,5 @@
 import { computed, onScopeDispose, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useWorkspaceExitGuard } from './useWorkspaceExitGuard'
 import {
   exportData,
   importData,
@@ -111,7 +111,7 @@ export function useDataTransfer() {
     }
   }
 
-  onBeforeRouteLeave(() => {
+  useWorkspaceExitGuard(() => {
     if (activity.value !== 'import') return true
     notify('Import is running. Wait for it to finish before leaving this page.')
     return false

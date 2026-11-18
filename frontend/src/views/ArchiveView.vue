@@ -1,46 +1,10 @@
 <script setup lang="ts">
-import { getPosts } from '../api/posts'
-
-import { computed, ref } from 'vue'
 import BlogNav from '../components/BlogNav.vue'
-import { date, errorMessage } from '../utils/format'
+import { date } from '../utils/format'
 import { site } from '../stores/site'
 import { usePageMetadata } from '../composables/usePageMetadata'
-import type { PostSummary as Post } from '../types'
-const posts = ref<Post[]>([])
-const page = ref(0)
-const pages = ref(1)
-const loading = ref(false)
-const error = ref('')
-const groups = computed(() => {
-  const values: { year: string; posts: Post[] }[] = []
-  for (const post of posts.value) {
-    const year = post.published_at?.slice(0, 4) || ''
-    let group = values.find((g) => g.year === year)
-    if (!group) {
-      group = { year, posts: [] }
-      values.push(group)
-    }
-    group.posts.push(post)
-  }
-  return values
-})
-async function load() {
-  if (loading.value) return
-  loading.value = true
-  error.value = ''
-  try {
-    const data = await getPosts({ limit: 25, page: page.value + 1 })
-    posts.value.push(...data.items)
-    page.value = data.page
-    pages.value = data.pages
-  } catch (e) {
-    error.value = errorMessage(e)
-  } finally {
-    loading.value = false
-  }
-}
-load()
+import { useArchive } from '../composables/useArchive'
+const { total, page, pages, loading, error, groups, load } = useArchive()
 usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
 </script>
 <template>
@@ -52,7 +16,11 @@ usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
     <p class="eyebrow">THE ARCHIVE</p>
     <h1>The archive</h1>
     <p class="index-description">
-      {{ site.stats?.posts || posts.length }} posts. Thoughts, notes, and discoveries.
+      {{
+        total === undefined
+          ? 'Thoughts, notes, and discoveries.'
+          : `${total} posts. Thoughts, notes, and discoveries.`
+      }}
     </p>
     <section
       v-for="group in groups"
@@ -72,8 +40,15 @@ usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
     <p
       v-if="error"
       class="form-error"
+      role="alert"
     >
       {{ error }}
+    </p>
+    <p
+      v-else-if="total === 0"
+      class="muted"
+    >
+      No posts yet.
     </p>
     <button
       v-if="page < pages || error"

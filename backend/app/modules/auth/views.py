@@ -19,6 +19,7 @@ from app.modules.auth.models import (
 from app.modules.mail import service as mail_service
 
 router = APIRouter(tags=["authentication"])
+admin_router = APIRouter(tags=["authentication"])
 
 
 def client_ip(request: Request) -> str:
@@ -53,7 +54,7 @@ def sign_in(
     return SessionResponse(username=session.username, csrf_token=csrf_token(session.token))
 
 
-@router.get("/admin/me", response_model=SessionResponse)
+@admin_router.get("/me", response_model=SessionResponse)
 def get_session(
     request: Request, user: CurrentAdmin, settings: SettingsDependency
 ) -> SessionResponse:
@@ -63,7 +64,7 @@ def get_session(
     )
 
 
-@router.post("/admin/logout", response_model=SuccessResponse)
+@admin_router.post("/logout", response_model=SuccessResponse)
 def sign_out(
     request: Request,
     response: Response,

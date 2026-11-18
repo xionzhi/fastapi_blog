@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { X } from 'lucide-vue-next'
 import { notify } from '../stores/notifications'
 import { useCodeHighlighting } from '../composables/useCodeHighlighting'
-import { useImageLightbox } from '../composables/useImageLightbox'
+import { useArticleImages } from '../composables/useArticleImages'
+import ImageLightbox from './ImageLightbox.vue'
 import 'prismjs/themes/prism.css'
 
 const props = defineProps<{ html: string }>()
 const root = ref<HTMLElement>()
-const { image: lightbox, dialog, open: click } = useImageLightbox(() => props.html)
+const { image, open: openImage, keyboard: imageKeyboard } = useArticleImages(root, () => props.html)
 useCodeHighlighting(root, () => props.html)
 async function copy(e: MouseEvent) {
   const pre = (e.target as HTMLElement).closest('pre')
@@ -26,7 +26,8 @@ async function copy(e: MouseEvent) {
     ref="root"
     class="post-content article-body"
     v-html="html"
-    @click="click"
+    @click="openImage"
+    @keydown="imageKeyboard"
     @dblclick="copy"
   />
   <p
@@ -35,33 +36,10 @@ async function copy(e: MouseEvent) {
   >
     Double-click a code block to copy it
   </p>
-  <Teleport to="body">
-    <div
-      v-if="lightbox"
-      ref="dialog"
-      class="image-lightbox"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Image preview"
-      tabindex="0"
-      @click="lightbox = ''"
-      @keydown.esc.stop.prevent="lightbox = ''"
-      @keydown.tab.prevent
-      @keydown.ctrl.k.stop.prevent
-      @keydown.meta.k.stop.prevent
-    >
-      <button
-        class="icon-button"
-        aria-label="Close image"
-        autofocus
-        @click="lightbox = ''"
-      >
-        <X />
-      </button>
-      <img
-        :src="lightbox"
-        alt="Enlarged image"
-      />
-    </div>
-  </Teleport>
+  <ImageLightbox
+    v-if="image"
+    :src="image.src"
+    :alt="image.alt"
+    @close="image = null"
+  />
 </template>

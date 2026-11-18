@@ -45,10 +45,14 @@ export const getPost = (slug: string, signal?: AbortSignal): Promise<PostDetail 
   api(`/posts/${encodeURIComponent(slug)}`, { signal })
 export const getDraftPreview = (id: string, signal?: AbortSignal): Promise<PostDetail> =>
   api(`/preview/${encodeURIComponent(id)}`, { signal, cache: 'no-store' })
-export const getAdminPosts = (query: PostQuery = {}): Promise<Page<AdminPostSummary>> =>
-  api(`/admin/posts?${queryString(query)}`)
+export const getAdminPosts = (
+  query: PostQuery = {},
+  signal?: AbortSignal,
+): Promise<Page<AdminPostSummary>> =>
+  api(`/admin/posts?${queryString(query)}`, { signal, cache: 'no-store' })
 export const getAdminPost = (id: string): Promise<AdminPostDetail> => api(`/admin/posts/${id}`)
-export const getPostStatistics = (): Promise<PostStatistics> => api('/admin/stats')
+export const getPostStatistics = (signal?: AbortSignal): Promise<PostStatistics> =>
+  api('/admin/stats', { signal, cache: 'no-store' })
 export const savePost = (payload: PostInput, id?: string): Promise<AdminPostDetail> =>
   api(id ? `/admin/posts/${id}` : '/admin/posts', {
     method: id ? 'PUT' : 'POST',

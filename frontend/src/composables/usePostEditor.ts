@@ -1,11 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
-import {
-  onBeforeRouteLeave,
-  onBeforeRouteUpdate,
-  useRoute,
-  useRouter,
-  type RouteLocationNormalized,
-} from 'vue-router'
+import { onBeforeRouteUpdate, useRoute, useRouter, type RouteLocationNormalized } from 'vue-router'
 import { getAdminPost, previewPost, savePost, setDraftPreview, type PostInput } from '../api/posts'
 import { getAdminTags } from '../api/tags'
 import type { LibraryImage } from '../api/media'
@@ -14,6 +8,7 @@ import { site } from '../stores/site'
 import { notify } from '../stores/notifications'
 import { errorMessage, slugify } from '../utils/format'
 import { useDebouncedTask } from './useDebouncedTask'
+import { useWorkspaceExitGuard } from './useWorkspaceExitGuard'
 import type { Tag } from '../types'
 
 export type EditorDraft = Omit<PostInput, 'tags'>
@@ -259,15 +254,15 @@ export function usePostEditor(textarea: Ref<HTMLTextAreaElement | undefined>) {
     event.preventDefault()
     event.returnValue = ''
   }
-  const canLeave = (to: RouteLocationNormalized): boolean => {
-    if (id.value && to.params.id === id.value) return true
+  const canLeave = (to?: RouteLocationNormalized): boolean => {
+    if (id.value && to?.params.id === id.value) return true
     if (busy.value) {
       notify('Wait for the save to finish before leaving this page.')
       return false
     }
     return !dirty.value || confirm('You have unsaved changes. Leave this page?')
   }
-  onBeforeRouteLeave(canLeave)
+  useWorkspaceExitGuard(canLeave)
   onBeforeRouteUpdate(canLeave)
   onMounted(() => window.addEventListener('beforeunload', beforeUnload))
   onBeforeUnmount(() => {

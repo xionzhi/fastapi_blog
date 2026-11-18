@@ -10,7 +10,7 @@ from app.modules.auth.dependencies import CurrentAdmin
 from app.modules.mail import service
 from app.modules.mail.models import MailStatus, RecoveryEmailInput
 
-router = APIRouter(prefix="/admin/mail", tags=["admin mail"])
+router = APIRouter(prefix="/mail", tags=["admin mail"])
 
 
 @router.get("", response_model=MailStatus)

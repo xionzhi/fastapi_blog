@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { deletePost, getAdminPosts, getPostStatistics, type PostStatistics } from '../api/posts'
-
-import { ref, watch } from 'vue'
+import { nextTick, ref } from 'vue'
 import {
   Plus,
   Search,
@@ -11,64 +9,39 @@ import {
   Trash2,
   ExternalLink,
 } from 'lucide-vue-next'
-import { date, errorMessage } from '../utils/format'
-import { notify } from '../stores/notifications'
-import { useDebouncedTask } from '../composables/useDebouncedTask'
-import type { Page, AdminPostSummary as Post } from '../types'
-const data = ref<Page<Post>>()
-const stats = ref<PostStatistics>({ total: 0, draft: 0, published: 0, tags: 0 })
-const q = ref('')
-const status = ref('')
-const page = ref(1)
-const loading = ref(false)
-const error = ref('')
-let seq = 0
-const searchTask = useDebouncedTask(250)
-async function load() {
-  const id = ++seq
-  loading.value = true
-  error.value = ''
-  try {
-    const [posts, counts] = await Promise.all([
-      getAdminPosts({ page: page.value, q: q.value, status: status.value }),
-      getPostStatistics(),
-    ])
-    if (id === seq) {
-      data.value = posts
-      stats.value = counts
-    }
-  } catch (e) {
-    if (id === seq) error.value = errorMessage(e)
-  } finally {
-    if (id === seq) loading.value = false
-  }
+import { date } from '../utils/format'
+import { usePostList } from '../composables/usePostList'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+const {
+  data,
+  stats,
+  q,
+  status,
+  page,
+  loading,
+  busy,
+  error,
+  deleteTarget,
+  deleteError,
+  load,
+  askDelete,
+  cancelDelete,
+  remove,
+} = usePostList()
+const heading = ref<HTMLElement>()
+async function confirmDelete(): Promise<void> {
+  await remove()
+  if (deleteTarget.value) return
+  await nextTick()
+  heading.value?.querySelector('a')?.focus({ preventScroll: true })
 }
-async function resetPageAndLoad(): Promise<void> {
-  if (page.value !== 1) page.value = 1
-  else await load()
-}
-watch(q, () => searchTask.schedule(resetPageAndLoad))
-watch(status, () => {
-  searchTask.cancel()
-  void resetPageAndLoad()
-})
-watch(page, load)
-async function remove(post: Post) {
-  if (!confirm(`Delete "${post.title}"? This cannot be undone.`)) return
-  try {
-    await deletePost(post.id)
-    notify('Post deleted')
-    if (data.value?.items.length === 1 && page.value > 1) page.value--
-    else await load()
-  } catch (e) {
-    notify(errorMessage(e))
-  }
-}
-load()
 </script>
 <template>
   <div class="admin-page">
-    <header class="admin-page-heading">
+    <header
+      ref="heading"
+      class="admin-page-heading"
+    >
       <div>
         <p class="eyebrow">YOUR STORIES</p>
         <h1>Posts</h1>
@@ -105,18 +78,24 @@ load()
         <div class="tabs">
           <button
             :class="{ active: !status }"
+            :aria-pressed="!status"
+            :disabled="busy"
             @click="status = ''"
           >
             All
           </button>
           <button
             :class="{ active: status === 'published' }"
+            :aria-pressed="status === 'published'"
+            :disabled="busy"
             @click="status = 'published'"
           >
             Published
           </button>
           <button
             :class="{ active: status === 'draft' }"
+            :aria-pressed="status === 'draft'"
+            :disabled="busy"
             @click="status = 'draft'"
           >
             Drafts
@@ -126,6 +105,7 @@ load()
           <Search :size="16" />
           <input
             v-model="q"
+            :disabled="busy"
             placeholder="Search posts…"
             aria-label="Search all posts"
           />
@@ -160,7 +140,7 @@ load()
         <div
           v-if="data?.items.length"
           class="post-table"
-          :inert="loading ? true : undefined"
+          :inert="loading || busy ? true : undefined"
         >
           <div class="table-label">
             <span>Title</span>
@@ -214,7 +194,8 @@ load()
               <button
                 class="icon-button danger-hover"
                 :aria-label="`Delete ${post.title}`"
-                @click="remove(post)"
+                :disabled="busy || loading"
+                @click="askDelete(post)"
               >
                 <Trash2 :size="16" />
               </button>
@@ -226,9 +207,20 @@ load()
           class="empty-state"
         >
           <FileText :size="32" />
-          <h3>No posts yet</h3>
-          <p>Start with an idea. Write your first post.</p>
-          <RouterLink to="/workspace/posts/new">Start writing →</RouterLink>
+          <h3>{{ q.trim() || status ? 'No matching posts' : 'No posts yet' }}</h3>
+          <p>
+            {{
+              q.trim() || status
+                ? 'Try another search or filter.'
+                : 'Start with an idea. Write your first post.'
+            }}
+          </p>
+          <RouterLink
+            v-if="!q.trim() && !status"
+            to="/workspace/posts/new"
+          >
+            Start writing →
+          </RouterLink>
         </div>
         <div
           v-if="data && data.pages > 1"
@@ -237,7 +229,7 @@ load()
           <span>{{ data.total }} posts · Page {{ data.page }} of {{ data.pages }}</span>
           <button
             class="icon-button"
-            :disabled="loading || page <= 1"
+            :disabled="loading || busy || page <= 1"
             @click="page--"
             aria-label="Previous page"
           >
@@ -245,7 +237,7 @@ load()
           </button>
           <button
             class="icon-button"
-            :disabled="loading || page >= data.pages"
+            :disabled="loading || busy || page >= data.pages"
             @click="page++"
             aria-label="Next page"
           >
@@ -254,5 +246,16 @@ load()
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      v-if="deleteTarget"
+      title="Delete post?"
+      :item-name="deleteTarget.title"
+      description="This post will be permanently deleted. This cannot be undone."
+      confirm-label="Delete post"
+      :busy="busy"
+      :error="deleteError"
+      @cancel="cancelDelete"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>

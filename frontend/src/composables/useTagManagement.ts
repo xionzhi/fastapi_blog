@@ -1,5 +1,5 @@
 import { computed, onScopeDispose, ref, shallowRef } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { useWorkspaceExitGuard } from './useWorkspaceExitGuard'
 import { deleteTag, getAdminTags, saveTag, type TagInput } from '../api/tags'
 import { notify } from '../stores/notifications'
 import { errorMessage } from '../utils/format'
@@ -120,7 +120,7 @@ export function useTagManagement() {
     }
   }
 
-  onBeforeRouteLeave(() => {
+  useWorkspaceExitGuard(() => {
     if (!busy.value) return true
     notify('Wait for the tag operation to finish before leaving.')
     return false

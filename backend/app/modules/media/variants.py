@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from threading import BoundedSemaphore
+from typing import BinaryIO
 from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -14,7 +15,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from app.core.config import Settings
 from app.modules.media.models import ImageRead
 from app.modules.media.service import MAX_IMAGE_BYTES, SUPPORTED_FORMATS
-from app.modules.media.validation import valid_gif, webp_canvas_size
+from app.modules.media.validation import valid_gif, webp_canvas_size, webp_chunks
 
 WIDTHS = (48, 96)
 LIBRARY_WIDTH = 480
@@ -49,6 +50,50 @@ def revision(path: Path) -> str:
     return hashlib.sha256(f"{stat.st_mtime_ns}:{stat.st_size}:webp-82-v1".encode()).hexdigest()[:32]
 
 
+def webp_display_size(stream: BinaryIO, header: bytes) -> tuple[int, int] | None:
+    size = webp_canvas_size(header)
+    if size is None or size[0] * size[1] > MAX_SOURCE_PIXELS:
+        return None
+    if header[12:16] != b"VP8X":
+        return size
+    flags = header[20]
+    if flags & 0x02:
+        return None
+    if flags & 0x0C:
+        end = 8 + int.from_bytes(header[4:8], "little")
+        if not len(header) <= end <= MAX_IMAGE_BYTES:
+            return None
+        stream.seek(0)
+        data = memoryview(stream.read(end))
+        if len(data) != end:
+            return None
+        metadata = Image.Image()
+        for kind, payload in webp_chunks(data, 12, end):
+            key = {b"EXIF": "exif", b"XMP ": "xmp"}.get(kind)
+            if key:
+                metadata.info[key] = bytes(payload)
+        if metadata.getexif().get(274) in (5, 6, 7, 8):
+            return size[1], size[0]
+    return size
+
+
+def display_size(path: Path) -> tuple[int, int] | None:
+    """Read display dimensions without decoding PNG and WebP image pixels."""
+    with path.open("rb") as stream:
+        header = stream.read(32)
+        if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+            return webp_display_size(stream, header)
+    with open_source(path) as image:
+        width, height = image.size
+        if (image.format != "JPEG" and width * height > MAX_SOURCE_PIXELS) or getattr(
+            image, "is_animated", False
+        ):
+            return None
+        if Image.Image.getexif(image).get(274) in (5, 6, 7, 8):
+            return height, width
+        return width, height
+
+
 def describe(settings: Settings, url: str, role: str) -> ImageRead | None:
     parsed = urlsplit(url)
     if parsed.scheme or parsed.netloc or not parsed.path.startswith("/content/images/"):
@@ -59,14 +104,10 @@ def describe(settings: Settings, url: str, role: str) -> ImageRead | None:
             return None
         if path.stat().st_size > MAX_IMAGE_BYTES:
             return None
-        with open_source(path) as image:
-            width, height = image.size
-            if (image.format != "JPEG" and width * height > MAX_SOURCE_PIXELS) or getattr(
-                image, "is_animated", False
-            ):
-                return None
-            if image.getexif().get(274) in (5, 6, 7, 8):
-                width, height = height, width
+        size = display_size(path)
+        if size is None:
+            return None
+        width, height = size
         version = revision(path)
     except IMAGE_ERRORS:
         return None

@@ -21,7 +21,6 @@ const {
 </script>
 <template>
   <section class="content-panel settings-section mail-section">
-    <p class="eyebrow">ACCOUNT SECURITY</p>
     <h2>Administrator email</h2>
     <p class="muted">
       Password reset links and account security notifications are sent to your administrator email.

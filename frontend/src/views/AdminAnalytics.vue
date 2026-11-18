@@ -23,7 +23,6 @@ const cards = computed(() => [
   <div class="admin-page traffic-page">
     <header class="admin-page-heading">
       <div>
-        <p class="eyebrow">YOUR READERS</p>
         <h1>Analytics</h1>
         <p class="muted">Anonymous traffic estimates for your public blog.</p>
       </div>
@@ -151,9 +150,10 @@ const cards = computed(() => [
 }
 .traffic-note {
   padding: 15px;
-  border: 1px solid #e5dec7;
+  border: 1px solid var(--admin-warn-line);
   border-radius: 6px;
-  background: #fbf8ed;
+  background: var(--admin-warn-bg);
+  color: var(--admin-warn-text);
   font-size: 13px;
 }
 .popular-pages {
@@ -168,7 +168,7 @@ const cards = computed(() => [
   justify-content: space-between;
   padding: 16px 0;
   margin: 0;
-  border-top: 1px solid #edf0e9;
+  border-top: 1px solid var(--line);
 }
 .popular-pages a {
   min-width: 0;
@@ -185,12 +185,12 @@ const cards = computed(() => [
 .popular-pages li > span {
   flex-shrink: 0;
   font-size: 12px;
-  color: #65716a;
+  color: var(--muted);
 }
 .traffic-privacy {
   font-size: 12px;
   line-height: 1.9;
-  color: #65716a;
+  color: var(--muted);
 }
 @media (max-width: 1000px) {
   .traffic-cards {

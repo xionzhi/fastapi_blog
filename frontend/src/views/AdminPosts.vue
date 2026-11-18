@@ -42,11 +42,7 @@ async function confirmDelete(): Promise<void> {
       ref="heading"
       class="admin-page-heading"
     >
-      <div>
-        <p class="eyebrow">YOUR STORIES</p>
-        <h1>Posts</h1>
-        <p class="muted">A home for your thoughts and the stories behind them.</p>
-      </div>
+      <h1>Posts</h1>
       <RouterLink
         class="button-primary"
         to="/workspace/posts/new"
@@ -75,7 +71,11 @@ async function confirmDelete(): Promise<void> {
     </div>
     <div class="content-panel">
       <div class="table-toolbar">
-        <div class="tabs">
+        <div
+          class="tabs"
+          role="group"
+          aria-label="Post status"
+        >
           <button
             :class="{ active: !status }"
             :aria-pressed="!status"

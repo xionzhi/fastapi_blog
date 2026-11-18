@@ -26,7 +26,6 @@ async function importContent(): Promise<void> {
 </script>
 <template>
   <section class="content-panel settings-section data-transfer">
-    <p class="eyebrow">BACKUP AND MIGRATION</p>
     <h2>Export and import data</h2>
     <p>
       Export articles, pages, tags, redirects and site settings as JSON. File references are
@@ -47,7 +46,10 @@ async function importContent(): Promise<void> {
         <Download :size="16" />
         {{ activity === 'export' ? 'Exporting…' : 'Export JSON' }}
       </button>
-      <label class="button-secondary transfer-file">
+      <label
+        class="button-secondary transfer-file"
+        :class="{ 'is-disabled': busy }"
+      >
         <span>
           <Upload :size="16" />
           Choose JSON to preview (up to 16 MB)
@@ -60,7 +62,12 @@ async function importContent(): Promise<void> {
         />
       </label>
     </div>
-    <p v-if="filename">Selected file: {{ filename }}</p>
+    <p
+      v-if="filename"
+      class="muted transfer-filename"
+    >
+      Selected file: {{ filename }}
+    </p>
     <p
       v-if="activity === 'preview'"
       role="status"
@@ -90,12 +97,16 @@ async function importContent(): Promise<void> {
       </p>
       <div
         v-if="preview.conflicts.length || preview.changed_files.length"
+        class="transfer-warning"
         role="alert"
       >
         <p v-if="preview.conflicts.length">
           {{ preview.conflicts.length }}
           {{ preview.conflicts.length === 1 ? 'entry conflicts' : 'entries conflict' }}
           with existing content or depend on a conflicting entry.
+          <template v-if="preview.can_skip_conflicts && !skipConflicts">
+            Select “Skip conflicting entries” to import the remaining content.
+          </template>
         </p>
         <p v-if="preview.changed_files.length">
           {{ preview.changed_files.length }}
@@ -172,11 +183,16 @@ async function importContent(): Promise<void> {
     </div>
     <p
       v-if="result"
+      class="transfer-result"
       role="status"
     >
-      Import completed: {{ result.imported_posts }} content items and
-      {{ result.imported_tags }} tags added; {{ result.skipped_posts }} identical content items
-      skipped.
+      Import complete. Added {{ result.imported_posts }}
+      {{ result.imported_posts === 1 ? 'content item' : 'content items' }} and
+      {{ result.imported_tags }} {{ result.imported_tags === 1 ? 'tag' : 'tags' }}.
+      <template v-if="result.skipped_posts">
+        Skipped {{ result.skipped_posts }} identical
+        {{ result.skipped_posts === 1 ? 'content item' : 'content items' }}.
+      </template>
       <template v-if="result.skipped_conflicts">
         {{ result.skipped_conflicts }} conflicting
         {{ result.skipped_conflicts === 1 ? 'entry' : 'entries' }} skipped.
@@ -184,7 +200,6 @@ async function importContent(): Promise<void> {
       {{
         result.settings_imported ? 'Site settings were imported.' : 'Site settings were preserved.'
       }}
-      Administrator accounts were preserved.
     </p>
   </section>
 </template>
@@ -199,7 +214,7 @@ async function importContent(): Promise<void> {
 .transfer-actions {
   display: flex;
   align-items: start;
-  gap: 20px;
+  gap: 12px;
   flex-wrap: wrap;
   margin: 24px 0;
 }
@@ -208,6 +223,11 @@ async function importContent(): Promise<void> {
   cursor: pointer;
   min-width: 0;
   max-width: 100%;
+  white-space: normal;
+}
+.transfer-file.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .transfer-file:focus-within {
   outline: 2px solid var(--green);
@@ -227,8 +247,14 @@ async function importContent(): Promise<void> {
   cursor: pointer;
   max-width: 100%;
 }
+.transfer-file input:disabled {
+  cursor: not-allowed;
+}
+.transfer-filename {
+  overflow-wrap: anywhere;
+}
 .transfer-preview {
-  border-top: 1px solid #edf0e9;
+  border-top: 1px solid var(--line);
   padding-top: 24px;
 }
 .transfer-preview h3 {
@@ -237,6 +263,22 @@ async function importContent(): Promise<void> {
 .transfer-preview ul {
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+.transfer-warning {
+  padding: 12px 16px;
+  border: 1px solid var(--admin-warn-line);
+  border-radius: 6px;
+  background: var(--admin-warn-bg);
+  color: var(--admin-warn-text);
+}
+.transfer-warning ul {
+  margin: 0;
+}
+.data-transfer .transfer-result {
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: var(--admin-selected);
 }
 .transfer-checkbox {
   display: flex;

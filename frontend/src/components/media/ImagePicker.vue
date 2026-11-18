@@ -73,7 +73,13 @@ function choose(image: LibraryImage | undefined): void {
               placeholder="Describe the image"
             />
           </label>
-          <p class="muted">{{ selected?.path || 'Select an image to continue.' }}</p>
+          <p
+            class="picker-selection muted"
+            role="status"
+            :title="selected?.path"
+          >
+            {{ selected?.path || 'Select an image to continue.' }}
+          </p>
           <div class="picker-actions">
             <button
               type="button"
@@ -108,27 +114,44 @@ function choose(image: LibraryImage | undefined): void {
 }
 .image-picker-scroll {
   overflow: auto;
+  overscroll-behavior: contain;
   min-height: 0;
   padding: 2px;
 }
 .image-picker footer {
   flex-shrink: 0;
-  padding-top: 18px;
-  border-top: 1px solid #dfe5de;
-  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
 }
-.image-picker footer p {
-  overflow-wrap: anywhere;
-  margin: 10px 0;
+.image-picker .picker-selection {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .picker-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
 }
 @media (max-width: 600px) {
   .image-picker {
     padding: 18px;
+  }
+}
+@media (max-height: 420px) {
+  .image-picker {
+    display: block;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .image-picker-scroll {
+    overflow: visible;
   }
 }
 </style>

@@ -3,14 +3,14 @@
   text-align: center;
   margin-top: 24px;
   font-size: 12px;
-  color: #7a9070 !important;
+  color: var(--green) !important;
 }
 .forgot-link:hover {
   text-decoration: underline !important;
 }
 .admin .recovery-disabled {
   font-size: 10px;
-  color: #a4b19b;
+  color: var(--muted);
   text-align: center;
   margin: 22px 0 0;
 }
@@ -37,11 +37,11 @@
 }
 .mail-status > div {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: minmax(128px, 1fr) minmax(0, 3fr);
   align-items: center;
   gap: 8px 24px;
   padding: 16px 0;
-  border-bottom: 1px solid #edf0e9;
+  border-bottom: 1px solid var(--line);
 }
 .mail-status dt {
   float: none;
@@ -52,7 +52,7 @@
   overflow: visible;
   text-align: left;
   font-weight: 400;
-  color: #94a28c;
+  color: var(--muted);
 }
 .mail-status dd {
   min-width: 0;
@@ -70,9 +70,9 @@
   gap: 18px;
   margin: 24px 0;
   padding: 22px;
-  border: 1px solid #dfe5de;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: #f7f9f5;
+  background: var(--admin-panel);
   max-width: 560px;
 }
 .recovery-email-form h3 {
@@ -119,12 +119,8 @@
     font-size: 9px;
     padding: 8px;
   }
-  .admin-sidebar nav {
-    gap: 4px;
-  }
   .admin .admin-sidebar nav > a {
-    font-size: 10px;
-    padding: 8px;
+    font-size: 11px;
   }
   .admin .admin-sidebar nav > a svg {
     width: 14px;
@@ -132,16 +128,9 @@
   .admin .admin-brand {
     font-size: 11px;
   }
-  .admin .table-search {
-    max-width: 125px;
-  }
   .mail-status > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
-  }
-  .admin .login-footnote {
-    letter-spacing: 0.7px;
-    font-size: 10px;
   }
   .admin .editor-options label {
     font-size: 10px;

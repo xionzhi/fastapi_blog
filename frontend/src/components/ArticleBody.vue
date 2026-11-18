@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { notify } from '../stores/notifications'
+import { useCodeCopy } from '../composables/useCodeCopy'
 import { useCodeHighlighting } from '../composables/useCodeHighlighting'
 import { useArticleImages } from '../composables/useArticleImages'
 import ImageLightbox from './ImageLightbox.vue'
@@ -15,16 +15,7 @@ const {
   onImageError,
 } = useArticleImages(root, () => props.html)
 useCodeHighlighting(root, () => props.html)
-async function copy(e: MouseEvent) {
-  const pre = (e.target as HTMLElement).closest('pre')
-  if (!pre) return
-  try {
-    await navigator.clipboard.writeText(pre.innerText)
-    notify('Code copied')
-  } catch {
-    notify('Clipboard access is unavailable. Please copy manually.')
-  }
-}
+const codeCopied = useCodeCopy(root, () => props.html)
 </script>
 <template>
   <div
@@ -34,14 +25,13 @@ async function copy(e: MouseEvent) {
     @click="openImage"
     @keydown="imageKeyboard"
     @error.capture="onImageError"
-    @dblclick="copy"
   />
-  <p
-    v-if="html.includes('<pre')"
-    class="code-hint"
+  <span
+    class="code-copy-status"
+    role="status"
   >
-    Double-click a code block to copy it
-  </p>
+    {{ codeCopied ? 'Code copied' : '' }}
+  </span>
   <ImageLightbox
     v-if="image"
     :src="image.src"

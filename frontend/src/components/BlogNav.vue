@@ -34,6 +34,7 @@ function openMenu(): void {
     <div class="nav-actions">
       <button
         class="menu-toggle"
+        aria-haspopup="dialog"
         @click="openMenu"
       >
         <Menu :size="16" />

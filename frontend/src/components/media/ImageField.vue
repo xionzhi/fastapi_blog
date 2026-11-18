@@ -30,6 +30,7 @@ function choose(image: LibraryImage): void {
       <button
         type="button"
         class="icon-button"
+        aria-haspopup="dialog"
         :aria-label="`Choose ${label.toLowerCase()}`"
         title="Choose from image library"
         :disabled="disabled"
@@ -76,21 +77,43 @@ function choose(image: LibraryImage): void {
 .image-input {
   display: flex;
   align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--admin-surface);
 }
-.admin .image-input input {
+.image-input:focus-within {
+  border-color: var(--green);
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.admin .image-field .image-input > input {
   flex: 1;
   width: 0;
   min-width: 0;
-  border-radius: 5px 0 0 5px;
+  border: 0;
+  border-radius: 4px 0 0 4px;
+  background: transparent;
 }
-.image-input button {
+.image-input > :is(input, button):focus {
+  outline: none;
+}
+.image-input > button {
   flex: 0 0 42px;
   display: grid;
   place-items: center;
-  border: 1px solid #dfe5de;
-  border-left: 0;
-  border-radius: 0 5px 5px 0;
-  background: #fff;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0 4px 4px 0;
+  background: transparent;
   color: var(--green);
+}
+.image-input > button:not(:disabled):is(:hover, :focus-visible) {
+  background: var(--admin-selected);
+}
+@media (forced-colors: active) {
+  .image-input > button:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -3px;
+  }
 }
 </style>

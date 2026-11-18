@@ -89,6 +89,7 @@ onMounted(() => {
           <button
             type="button"
             class="button-secondary"
+            data-initial-focus
             :disabled="busy"
             @click="cancel"
           >
@@ -97,7 +98,7 @@ onMounted(() => {
           <button
             type="button"
             class="button-primary confirm-delete"
-            :disabled="busy"
+            :aria-disabled="busy"
             @click="!busy && emit('confirm')"
           >
             <Trash2 :size="15" />
@@ -117,11 +118,11 @@ onMounted(() => {
 .confirm-icon {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  background: #fbefef;
-  color: #af3f48;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
 }
 .admin .confirm-dialog h2 {
   font-size: 22px;
@@ -140,11 +141,15 @@ onMounted(() => {
   margin-top: 26px;
 }
 .admin .confirm-delete {
-  background: #b6414b;
-  border-color: #b6414b;
+  background: var(--admin-danger-text);
+  border-color: var(--admin-danger-text);
 }
-.admin .confirm-delete:not(:disabled):hover {
-  background: #96343d;
-  border-color: #96343d;
+.admin .confirm-delete[aria-disabled='false']:hover {
+  background: var(--admin-danger-hover);
+  border-color: var(--admin-danger-hover);
+}
+.admin .confirm-delete[aria-disabled='true'] {
+  opacity: 0.65;
+  cursor: progress;
 }
 </style>

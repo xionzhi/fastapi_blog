@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { Copy, Image, RefreshCw, Trash2, Upload, X } from 'lucide-vue-next'
+import { Check, Copy, Image, RefreshCw, Trash2, Upload, X } from 'lucide-vue-next'
 import type { LibraryImage } from '../../api/media'
 import { useImageLibrary } from '../../composables/useImageLibrary'
 import { useModalFocus } from '../../composables/useModalFocus'
@@ -20,7 +20,7 @@ const { search, page, data, loading, busy, error, selected, reload, upload, move
   useImageLibrary()
 const file = ref<HTMLInputElement>()
 const newPath = ref('')
-const failed = ref<Record<string, boolean>>({})
+const failedThumbnails = ref(new Set<string>())
 const dialog = ref<HTMLElement>()
 const refreshButton = ref<HTMLButtonElement>()
 const deleteTarget = ref<LibraryImage>()
@@ -39,6 +39,10 @@ watch(selected, (image) => {
 
 function choose(image: LibraryImage): void {
   selected.value = image
+}
+function refreshImages(): void {
+  failedThumbnails.value.clear()
+  void reload()
 }
 function savePath(): void {
   if (selected.value) void move(selected.value, newPath.value.trim())
@@ -91,7 +95,7 @@ async function deleteSelected(): Promise<void> {
         type="button"
         class="button-secondary"
         :disabled="busy || loading"
-        @click="reload"
+        @click="refreshImages"
       >
         <RefreshCw :size="16" />
         Refresh
@@ -146,25 +150,34 @@ async function deleteSelected(): Promise<void> {
             type="button"
             class="media-card"
             :class="{ selected: selected?.path === image.path }"
-            :aria-pressed="selected?.path === image.path"
+            :aria-pressed="picker ? selected?.path === image.path : undefined"
+            :aria-haspopup="picker ? undefined : 'dialog'"
             @click="choose(image)"
           >
             <span class="media-thumbnail">
               <img
-                v-if="!failed[image.path]"
+                v-if="!failedThumbnails.has(image.thumbnail)"
+                :key="image.thumbnail"
                 :src="image.thumbnail"
                 alt=""
                 width="480"
                 height="360"
                 loading="lazy"
                 decoding="async"
-                @error="failed[image.path] = true"
+                @error="failedThumbnails.add(image.thumbnail)"
               />
               <Image
                 v-else
                 :size="32"
                 aria-label="Preview unavailable"
               />
+              <span
+                v-if="picker && selected?.path === image.path"
+                class="media-selected-mark"
+                aria-hidden="true"
+              >
+                <Check :size="15" />
+              </span>
             </span>
             <strong>{{ image.name }}</strong>
             <small>
@@ -383,11 +396,11 @@ async function deleteSelected(): Promise<void> {
   align-items: stretch;
   min-width: 0;
   padding: 0;
-  border: 1px solid #dfe5de;
+  border: 1px solid var(--line);
   border-radius: 7px;
-  background: #fff;
+  background: var(--admin-surface);
   text-align: left;
-  color: #38483c;
+  color: var(--ink);
   gap: 0;
   overflow: hidden;
   text-transform: none;
@@ -400,13 +413,29 @@ async function deleteSelected(): Promise<void> {
 }
 .media-card.selected {
   box-shadow: inset 0 0 0 1px var(--green);
+  background: var(--admin-selected);
 }
 .media-thumbnail {
+  position: relative;
   aspect-ratio: 4 / 3;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  background: var(--admin-panel);
+}
+.media-selected-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--admin-surface);
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--admin-surface);
 }
 .media-thumbnail img {
   width: 100%;
@@ -433,9 +462,9 @@ async function deleteSelected(): Promise<void> {
 .media-details {
   min-width: 0;
   padding: 20px;
-  border: 1px solid #dfe5de;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--admin-surface);
   align-self: auto;
   max-width: 560px;
   max-height: calc(100dvh - 50px);
@@ -461,7 +490,7 @@ async function deleteSelected(): Promise<void> {
 }
 .media-usage {
   margin: 24px 0;
-  border-top: 1px solid #e4e9e1;
+  border-top: 1px solid var(--line);
   padding-top: 18px;
 }
 .media-usage ul {
@@ -471,7 +500,7 @@ async function deleteSelected(): Promise<void> {
   overflow-wrap: anywhere;
 }
 .media-delete {
-  color: #aa3941;
+  color: var(--admin-danger-text);
 }
 @media (max-width: 520px) {
   .media-grid {

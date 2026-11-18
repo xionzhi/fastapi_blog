@@ -9,11 +9,7 @@ const { form, dirty, busy, error, save, refreshForm } = useSiteSettings()
 <template>
   <div class="admin-page settings-page">
     <header class="admin-page-heading">
-      <div>
-        <p class="eyebrow">MAKE IT YOURS</p>
-        <h1>Settings</h1>
-        <p class="muted">Your blog, your identity, and the words you have written.</p>
-      </div>
+      <h1>Settings</h1>
     </header>
     <p
       v-if="error"

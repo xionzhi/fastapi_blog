@@ -31,7 +31,7 @@ onMounted(() => {
           <Search :size="22" />
           <input
             v-model="query"
-            placeholder="Search posts, topics, and keywords…"
+            placeholder="Search posts…"
             aria-label="Search keywords"
           />
           <button
@@ -43,6 +43,7 @@ onMounted(() => {
           </button>
         </div>
         <div
+          v-if="query.trim()"
           class="search-results"
           aria-live="polite"
           :aria-busy="loading"
@@ -59,16 +60,13 @@ onMounted(() => {
           >
             {{ error }}
           </p>
-          <p
-            v-else-if="!query.trim()"
-            class="muted"
-          >
-            Find a familiar thought, or discover something new.
-          </p>
           <template v-else>
-            <p class="search-count">
-              {{ total }} posts
-              <span v-if="total > 30">; showing the first 30. Refine your search to see more.</span>
+            <p
+              v-if="total"
+              class="search-count"
+            >
+              {{ total }} {{ total === 1 ? 'post' : 'posts' }}
+              <span v-if="total > 30">· Showing the first 30</span>
             </p>
             <RouterLink
               v-for="post in results"
@@ -93,7 +91,6 @@ onMounted(() => {
         <div class="search-hint">
           <kbd>esc</kbd>
           Close
-          <span>Full-text search</span>
         </div>
       </section>
     </div>

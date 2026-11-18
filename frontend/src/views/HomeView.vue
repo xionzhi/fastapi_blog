@@ -109,11 +109,12 @@ function search() {
         </span>
         <button
           class="text-button"
+          aria-haspopup="dialog"
           @click="search"
         >
           <Search :size="15" />
           <span>Search posts</span>
-          <kbd>⌘ K</kbd>
+          <kbd>Ctrl / ⌘ K</kbd>
         </button>
       </div>
       <div
@@ -172,7 +173,12 @@ function search() {
             class="state-message"
           >
             <p>{{ page > data.pages ? 'No posts on this page.' : 'No posts yet.' }}</p>
-            <RouterLink to="/">Back to home</RouterLink>
+            <RouterLink
+              v-if="page > 1"
+              to="/"
+            >
+              Back to latest posts
+            </RouterLink>
           </div>
           <Pagination
             :page="data.page"

@@ -39,12 +39,16 @@ function isInternal(url: string): boolean {
   <a
     class="skip-link"
     href="#main-content"
+    :inert="menu || searching ? true : undefined"
   >
     Skip to content
   </a>
   <div :inert="menu || searching ? true : undefined"><RouterView /></div>
   <template v-if="!admin">
-    <footer class="blog-footer">
+    <footer
+      class="blog-footer"
+      :inert="menu || searching ? true : undefined"
+    >
       <RouterLink to="/">{{ site.title }}</RouterLink>
       <span>© {{ new Date().getFullYear() }}</span>
       <div>

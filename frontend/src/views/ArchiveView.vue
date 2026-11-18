@@ -13,14 +13,12 @@ usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
     id="main-content"
     class="index-page archive-page"
   >
-    <p class="eyebrow">THE ARCHIVE</p>
-    <h1>The archive</h1>
-    <p class="index-description">
-      {{
-        total === undefined
-          ? 'Thoughts, notes, and discoveries.'
-          : `${total} posts. Thoughts, notes, and discoveries.`
-      }}
+    <h1>Archive</h1>
+    <p
+      v-if="total !== undefined"
+      class="index-description"
+    >
+      {{ total }} {{ total === 1 ? 'post' : 'posts' }}
     </p>
     <section
       v-for="group in groups"
@@ -56,7 +54,7 @@ usePageMetadata(() => ({ title: `Archive · ${site.value.title}` }))
       :disabled="loading"
       @click="load"
     >
-      {{ loading ? 'Loading…' : 'Load more' }}
+      {{ loading ? 'Loading…' : error ? 'Try again' : 'Load more' }}
     </button>
   </main>
 </template>

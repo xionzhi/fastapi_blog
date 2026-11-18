@@ -25,7 +25,7 @@ const { busy, logout } = useSignOut()
         to="/workspace/posts"
       >
         <span class="admin-brand-icon"><PenLine :size="20" /></span>
-        <div>
+        <div class="admin-brand-name">
           {{ site.title }}
           <small>Writing workspace</small>
         </div>
@@ -56,12 +56,17 @@ const { busy, logout } = useSignOut()
         <a
           href="/"
           target="_blank"
+          rel="noopener"
+          aria-label="View blog"
+          title="View blog"
         >
           <ExternalLink :size="16" />
           View blog
         </a>
         <button
           :disabled="busy"
+          :aria-label="busy ? 'Signing out…' : 'Sign out'"
+          title="Sign out"
           @click="logout"
         >
           <LogOut :size="16" />

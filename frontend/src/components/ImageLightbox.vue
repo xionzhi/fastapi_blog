@@ -52,6 +52,7 @@ onMounted(() => {
       aria-label="Image preview"
       :aria-describedby="hintId"
       tabindex="-1"
+      @click.self="close"
       @keydown="keydown"
       @keydown.ctrl.k.stop.prevent
       @keydown.meta.k.stop.prevent
@@ -161,28 +162,40 @@ onMounted(() => {
 
 <style scoped>
 .image-lightbox {
+  --lightbox-controls-bg: rgb(255 255 255 / 78%);
+  --lightbox-controls-border: rgb(38 52 58 / 16%);
   position: fixed;
   inset: 0;
   z-index: 160;
-  background: #10171b;
-  color: #f4f6f7;
+  display: grid;
+  grid-template:
+    '. toolbar close' auto
+    'viewport viewport viewport' minmax(0, 1fr)
+    'hint hint hint' auto / minmax(44px, 1fr) auto minmax(44px, 1fr);
+  align-items: center;
+  row-gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgb(248 248 245 / 72%);
+  backdrop-filter: blur(18px);
+  color: #26343a;
   font:
     13px 'Open Sans',
     sans-serif;
 }
+.image-lightbox:focus {
+  outline: none;
+}
 .lightbox-toolbar {
-  position: absolute;
-  top: max(16px, env(safe-area-inset-top));
-  left: 50%;
-  transform: translateX(-50%);
+  grid-area: toolbar;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px;
-  border: 1px solid #ffffff26;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--lightbox-controls-border);
   border-radius: 12px;
-  background: #273135;
-  z-index: 1;
+  background: var(--lightbox-controls-bg);
+  box-shadow: 0 3px 18px #1e2b3314;
 }
 .image-lightbox button {
   display: inline-flex;
@@ -198,33 +211,35 @@ onMounted(() => {
   font-weight: 600;
 }
 .image-lightbox button:not(:disabled):hover {
-  background: #ffffff1f;
+  background: rgb(226 231 228 / 86%);
 }
 .image-lightbox button:focus-visible {
-  outline-color: #b7d6cc;
-  outline-offset: 1px;
+  outline: 2px solid #49685c;
+  outline-offset: -2px;
 }
 .lightbox-toolbar output {
-  width: 54px;
+  width: 48px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .lightbox-divider {
   height: 20px;
   width: 1px;
-  margin: 0 4px;
-  background: #ffffff26;
+  margin: 0 3px;
+  background: var(--lightbox-controls-border);
 }
 .image-lightbox .lightbox-close {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  top: max(22px, env(safe-area-inset-top));
-  z-index: 2;
+  grid-area: close;
+  justify-self: end;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--lightbox-controls-border);
+  background: var(--lightbox-controls-bg);
 }
 .lightbox-viewport {
-  position: absolute;
-  inset: calc(84px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-    calc(58px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  grid-area: viewport;
+  align-self: stretch;
+  position: relative;
   overflow: hidden;
   touch-action: none;
   user-select: none;
@@ -238,7 +253,7 @@ onMounted(() => {
   margin: 0;
   opacity: 0;
   transform-origin: center;
-  cursor: zoom-in;
+  cursor: default;
 }
 .lightbox-viewport img.is-ready {
   opacity: 1;
@@ -259,33 +274,27 @@ onMounted(() => {
   margin: 0;
   padding: 24px;
   text-align: center;
-  color: #d4dcdf;
 }
 .lightbox-hint {
-  position: absolute;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  left: 12px;
-  right: 12px;
+  grid-area: hint;
+  justify-self: center;
   margin: 0;
   text-align: center;
   font-size: 11px;
   line-height: 1.6;
-  color: #b6c1c5;
+  color: #34454a;
 }
 @media (max-width: 600px) {
+  .image-lightbox {
+    grid-template:
+      '. close' auto
+      'viewport viewport' minmax(0, 1fr)
+      'toolbar toolbar' auto
+      'hint hint' auto / minmax(0, 1fr) auto;
+    row-gap: 8px;
+  }
   .lightbox-toolbar {
-    top: auto;
-    bottom: calc(48px + env(safe-area-inset-bottom));
-  }
-  .lightbox-viewport {
-    inset: calc(66px + env(safe-area-inset-top)) 12px calc(116px + env(safe-area-inset-bottom));
-  }
-  .image-lightbox .lightbox-close {
-    top: max(12px, env(safe-area-inset-top));
-  }
-  .lightbox-hint {
-    bottom: max(16px, env(safe-area-inset-bottom));
-    font-size: 10px;
+    justify-self: center;
   }
 }
 </style>

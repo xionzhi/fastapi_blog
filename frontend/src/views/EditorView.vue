@@ -120,21 +120,28 @@ async function copyPreviewLink(): Promise<void> {
           maxlength="300"
         />
         <div class="editor-format-bar">
-          <div class="segmented">
+          <div
+            class="segmented"
+            role="group"
+            aria-label="Editor layout"
+          >
             <button
               :class="{ active: mode === 'write' }"
+              :aria-pressed="mode === 'write'"
               @click="mode = 'write'"
             >
               Edit
             </button>
             <button
               :class="{ active: mode === 'split' }"
+              :aria-pressed="mode === 'split'"
               @click="mode = 'split'"
             >
               Split
             </button>
             <button
               :class="{ active: mode === 'preview' }"
+              :aria-pressed="mode === 'preview'"
               @click="mode = 'preview'"
             >
               Preview
@@ -143,6 +150,7 @@ async function copyPreviewLink(): Promise<void> {
           <div>
             <button
               class="text-button"
+              aria-haspopup="dialog"
               :disabled="busy"
               @click="openLibrary"
             >
@@ -272,9 +280,9 @@ async function copyPreviewLink(): Promise<void> {
 }
 .preview-sharing-actions {
   display: flex;
-  border: 1px solid #dfe5de;
+  border: 1px solid var(--line);
   border-radius: 5px;
-  background: #fff;
+  background: var(--admin-surface);
 }
 .preview-control {
   display: inline-flex;
@@ -293,10 +301,10 @@ async function copyPreviewLink(): Promise<void> {
 }
 .preview-control-icon {
   flex: 0 0 40px;
-  border-left: 1px solid #dfe5de;
+  border-left: 1px solid var(--line);
 }
 .preview-control:not(:disabled):hover {
-  background: #f5f7f5;
+  background: var(--admin-panel);
 }
 .preview-control:focus-visible {
   outline-offset: -3px;

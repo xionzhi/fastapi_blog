@@ -39,11 +39,7 @@ async function confirmDelete(): Promise<void> {
 <template>
   <div class="admin-page">
     <header class="admin-page-heading">
-      <div>
-        <p class="eyebrow">ORGANIZE YOUR IDEAS</p>
-        <h1>Tags</h1>
-        <p class="muted">Connect your posts through shared ideas.</p>
-      </div>
+      <h1>Tags</h1>
       <button
         ref="newTagButton"
         class="button-primary"

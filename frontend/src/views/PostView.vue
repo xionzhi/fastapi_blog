@@ -18,6 +18,9 @@ const router = useRouter()
 const preview = computed(() => route.name === 'draft-preview')
 const toc = ref<{ id: string; text: string; level: number }[]>([])
 const showToc = ref(false)
+const coverExpanded = ref(false)
+const coverAspectRatio = ref<number>()
+const coverFailed = ref(false)
 const {
   data: loadedPost,
   loading,
@@ -44,6 +47,14 @@ const post = computed(() => {
     return data.status === 'draft' && data.id === route.params.id ? data : undefined
   return data.status === 'published' && data.slug === route.params.slug ? data : undefined
 })
+const cover = computed(() => (coverFailed.value ? undefined : post.value?.feature_image))
+watch(
+  () => post.value?.feature_image,
+  () => {
+    coverAspectRatio.value = undefined
+    coverFailed.value = false
+  },
+)
 usePageMetadata(() => {
   const data = post.value
   if (!data || data.slug !== route.params.slug) return {}
@@ -64,6 +75,7 @@ watch(
   post,
   (data) => {
     showToc.value = false
+    coverExpanded.value = false
     toc.value = []
     if (!data) return
     const doc = new DOMParser().parseFromString(data.html, 'text/html')
@@ -75,6 +87,10 @@ watch(
   },
   { immediate: true },
 )
+function measureCover(event: Event): void {
+  const image = event.currentTarget as HTMLImageElement
+  if (image.naturalWidth) coverAspectRatio.value = image.naturalHeight / image.naturalWidth
+}
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(window.location.href)
@@ -87,10 +103,32 @@ async function copyLink() {
 <template>
   <header
     class="main-header post-head article-head"
-    :class="{ 'no-cover': !post?.feature_image }"
-    :style="post?.feature_image ? { backgroundImage: `url('${post.feature_image}')` } : {}"
+    :class="{ 'no-cover': !cover, 'cover-expanded': coverExpanded }"
   >
-    <BlogNav :overlay="!!post?.feature_image" />
+    <button
+      v-if="cover"
+      type="button"
+      class="cover-trigger"
+      :aria-label="coverExpanded ? 'Collapse cover image' : 'Expand cover image'"
+      :aria-expanded="coverExpanded"
+      :disabled="!coverAspectRatio"
+      :style="
+        coverAspectRatio
+          ? { '--cover-full-height': `calc(100cqw * ${coverAspectRatio})` }
+          : undefined
+      "
+      @click="coverExpanded = !coverExpanded"
+    >
+      <img
+        :key="cover"
+        :src="cover"
+        alt=""
+        fetchpriority="high"
+        @load="measureCover"
+        @error="coverFailed = true"
+      />
+    </button>
+    <BlogNav :overlay="!!cover" />
   </header>
   <main
     id="main-content"
@@ -196,3 +234,58 @@ async function copyLink() {
     </RouterLink>
   </aside>
 </template>
+
+<style scoped>
+.article-head:not(.no-cover) {
+  display: block;
+  height: auto;
+  min-height: 0;
+  container-type: inline-size;
+}
+.cover-trigger {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: var(--cover-collapsed-height);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  overflow: hidden;
+  transition: height 520ms cubic-bezier(0.24, 0.68, 0.32, 1);
+}
+.cover-trigger img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover-trigger:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.cover-expanded .cover-trigger {
+  height: auto;
+}
+@supports (width: 1cqw) {
+  .cover-expanded .cover-trigger {
+    height: var(--cover-full-height, var(--cover-collapsed-height));
+  }
+}
+.cover-trigger:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -5px;
+}
+.article-head:not(.no-cover) > .blog-nav {
+  pointer-events: none;
+}
+.article-head:not(.no-cover) > .blog-nav :deep(:is(a, button)) {
+  pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cover-trigger {
+    transition: none;
+  }
+}
+</style>

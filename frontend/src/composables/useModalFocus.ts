@@ -23,7 +23,12 @@ export function useModalFocus(
       ...(dialog.value?.querySelectorAll<HTMLElement>(
         'a[href],button,input,textarea,select,[tabindex]',
       ) ?? []),
-    ].filter((element) => !element.matches(':disabled,[tabindex="-1"]'))
+    ].filter(
+      (element) =>
+        element.tabIndex >= 0 &&
+        !element.matches(':disabled') &&
+        element.getClientRects().length > 0,
+    )
 
   watch(
     active,
@@ -39,7 +44,9 @@ export function useModalFocus(
       await nextTick()
       if (!disposed && active.value) {
         const target =
-          dialog.value?.querySelector<HTMLElement>('input:not(:disabled)') || dialog.value
+          dialog.value?.querySelector<HTMLElement>(
+            '[data-initial-focus]:not(:disabled), input:not(:disabled):not([hidden])',
+          ) || dialog.value
         target?.focus()
       }
     },
@@ -58,7 +65,10 @@ export function useModalFocus(
       if (!first) {
         event.preventDefault()
         dialog.value?.focus()
-      } else if (event.shiftKey && document.activeElement === first) {
+      } else if (
+        event.shiftKey &&
+        (document.activeElement === first || document.activeElement === dialog.value)
+      ) {
         event.preventDefault()
         last?.focus()
       } else if (!event.shiftKey && document.activeElement === last) {

@@ -14,9 +14,7 @@ usePageMetadata(() => ({ title: `Tags · ${site.value.title}` }))
     id="main-content"
     class="index-page"
   >
-    <p class="eyebrow">TOPICS</p>
     <h1>Tags</h1>
-    <p class="index-description">Follow a topic. Keep exploring.</p>
     <p
       v-if="error"
       class="form-error"
